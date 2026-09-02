@@ -4,4 +4,6 @@ version = "0.1.0"
 description = "Python package for generating ELECTRO sampling trajectories for 3D MRI"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "marimo[recommended]>=0.24.0",
+]
