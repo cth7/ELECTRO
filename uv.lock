@@ -296,7 +296,7 @@ wheels = [
 [[package]]
 name = "electro"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "marimo", extra = ["recommended"] },
 ]
