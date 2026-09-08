@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "marimo[recommended]>=0.24.0",
+    "numpy>=2.5.2",
+    "plotly>=7.0.0",
 ]
 
 [build-system]
@@ -14,3 +16,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/electro"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.5",
+]
