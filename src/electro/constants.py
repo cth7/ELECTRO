@@ -10,3 +10,8 @@ def supergolden_ratio():
     root = roots[0].real
     assert root > 0
     return root
+
+
+def golden_mean_2d():
+    sr = supergolden_ratio()
+    return np.array([1 / sr ** 2, 1 / sr])
