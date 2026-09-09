@@ -15,3 +15,19 @@ def supergolden_ratio():
 def golden_mean_2d():
     sr = supergolden_ratio()
     return np.array([1 / sr ** 2, 1 / sr])
+
+
+def plastic_ratio():
+    # Polynomial coefficients
+    coeffs = [1, 0, -1, -1]
+    roots = np.roots(coeffs)
+    # Check that there is only one real root
+    assert sum([1 if root.imag == 0 else 0 for root in roots]) == 1
+    root = roots[0].real
+    assert root > 0
+    return root
+
+
+def plastic_point():
+    pr = plastic_ratio()
+    return np.array([1 / pr, 1 / pr ** 2])
