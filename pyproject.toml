@@ -21,3 +21,6 @@ packages = ["src/electro"]
 dev = [
     "ruff>=0.16.5",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"**/*.py" = ["EXE002"]
