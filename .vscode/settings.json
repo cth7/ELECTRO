@@ -1,0 +1,10 @@
+{
+    "[python]": {
+        "editor.rulers": [79]
+    },
+    "ruff.path": [
+        "${workspaceFolder}/.venv/bin/ruff"
+    ],
+    "ruff.nativeServer": true,
+    "editor.inlayHints.enabled": "offUnlessPressed"
+}
