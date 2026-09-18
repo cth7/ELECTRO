@@ -20,6 +20,7 @@ packages = ["src/electro"]
 [dependency-groups]
 dev = [
     "ruff>=0.16.5",
+    "ty>=0.0.82",
 ]
 
 [tool.ruff.lint.per-file-ignores]
