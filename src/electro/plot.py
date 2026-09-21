@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 
 
 def set_up_points_in_square():
-    """Sets up a default static frame for the figure.
+    """Sets up a default frame for the figure.
 
     For plotting a set of 2D points in the unit square. 
 
