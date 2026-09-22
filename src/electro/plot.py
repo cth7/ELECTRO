@@ -29,6 +29,7 @@ def set_up_points_in_square():
     # Settings common to both x and y axes
     axis_dict = {}
     axis_dict["range"] = [0, 1]
+    axis_dict["autorange"] = False
     axis_dict["linecolor"] = "black"
     axis_dict["zeroline"] = False
     axis_dict["showline"] = True
@@ -57,6 +58,7 @@ def set_up_points_in_square():
         constrain="domain"
     )
     f.update_yaxes(
+        constrain="domain",
         scaleanchor="x",
         scaleratio=1
     )
