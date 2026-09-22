@@ -92,7 +92,7 @@ def points_in_square(points, title="", marker_size=12, colorscale="Viridis"):
              "direction": "left",
              "x": 1.02,
              "xanchor": "left",
-             "y": -0.08,
+             "y": -0.095,
              "yanchor": "top"}
         ],
         sliders=[
