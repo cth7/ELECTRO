@@ -12,9 +12,23 @@ def supergolden_ratio():
     return root
 
 
-def golden_mean_2d():
-    sr = supergolden_ratio()
-    return np.array([1 / sr ** 2, 1 / sr])
+def golden_mean_2d(reverse=False):
+    """Returns the 2D golden mean.
+
+    Args:
+        reverse: Boolean specifying whether to reverse the order of the
+            components. True corresponds to the order used in Chan et al.
+
+    References:
+        R. W. Chan et al. (2009). Temporal stability of adaptive 3D radial MRI
+        using multidimensional golden means. Magnetic Resonance in Medicine.
+        https://doi.org/10.1002/mrm.21837
+    """
+    p = supergolden_ratio()
+    if reverse:
+        return np.array([1 / p ** 2, 1 / p])
+    else:
+        return np.array([1 / p, 1 / p ** 2])
 
 
 def plastic_ratio():
@@ -28,6 +42,15 @@ def plastic_ratio():
     return root
 
 
-def plastic_point():
-    pr = plastic_ratio()
-    return np.array([1 / pr, 1 / pr ** 2])
+def plastic_point(reverse=False):
+    """Returns the 2D point corresponding to the plastic ratio.
+
+    Args:
+        reverse: Boolean specifying whether to reverse the order of the
+            components.
+    """
+    p = plastic_ratio()
+    if reverse:
+        return np.array([1 / p ** 2, 1 / p])
+    else:
+        return np.array([1 / p, 1 / p ** 2])
