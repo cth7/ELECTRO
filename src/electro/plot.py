@@ -155,7 +155,7 @@ def set_up_points_on_sphere():
 
 
 def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
-                     radius=0.99, eye_polar=45, eye_azimuthal=45):
+                     radius=0.99, eye_polar=25, eye_azimuthal=45):
     """Plots a set of 3D points on the unit sphere.
 
     Args:
