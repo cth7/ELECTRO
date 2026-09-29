@@ -23,3 +23,24 @@ def square(point, num_points, offset=0, n0=0, dtype=np.float64):
     n = np.arange(n0, num_points + n0).reshape((-1, 1))
     out = np.mod(n * point + offset, 1)
     return out
+
+
+def square_to_sphere(points, half_sphere=False):
+    """Maps a set of points in the unit square to the unit sphere.
+
+    Args:
+        points: Array with shape (num_points, 2).
+        half_sphere: Boolean. If true points get mapped to the top hemisphere
+            only.
+
+    Returns:
+        out: Array with shape (num_points, 3) corresponding to (x, y, z)
+            coordinates.
+    """
+    z = 1 - points[:, 0] if half_sphere else 1 - 2 * points[:, 0]
+    r = (1 - z ** 2) ** 0.5
+    azimuthal_angle = 2 * np.pi * points[:, 1]
+    x = r * np.cos(azimuthal_angle)
+    y = r * np.sin(azimuthal_angle)
+    out = np.stack([x, y, z], axis=1)
+    return out
