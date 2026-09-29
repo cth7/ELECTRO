@@ -103,3 +103,137 @@ def points_in_square(points, title="", marker_size=12, colorscale="Viridis"):
     f.add_trace(trace)
 
     return f
+
+
+def set_up_points_on_sphere():
+    """Sets up a default frame for the figure.
+
+    For plotting a set of 3D points on the unit sphere.
+
+    Returns:
+        f: Plotly figure object.
+    """
+    f = go.Figure()
+
+    margin_dict = {}
+    margin_dict["l"] = 0
+    margin_dict["r"] = 0
+    margin_dict["t"] = 0
+    margin_dict["b"] = 0
+
+    title_dict = {}
+    title_dict["x"] = 0.5
+    title_dict["xanchor"] = "center"
+    title_dict["xref"] = "paper"
+    title_dict["y"] = 0.985
+    title_dict["yanchor"] = "top"
+    title_dict["font"] = {"weight": "bold",
+                          "size": 22,
+                          "color": "dimgray"}
+
+    axis_dict = {}
+    axis_dict["range"] = [-1, 1]
+    axis_dict["visible"] = False
+
+    scene_dict = {}
+    scene_dict["xaxis"] = axis_dict
+    scene_dict["yaxis"] = axis_dict
+    scene_dict["zaxis"] = axis_dict
+    scene_dict["aspectmode"] = "cube"
+    scene_dict["bgcolor"] = "white"
+    scene_dict["camera"] = {"eye": {"x": 0.9, "y": 0.9, "z": 0.9}}
+
+    f.update_layout(
+        height=650,
+        width=600,
+        margin=margin_dict,
+        title=title_dict,
+        scene=scene_dict,
+        font_family="Arial"
+    )
+    return f
+
+
+def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
+                     radius=0.99, eye_polar=45, eye_azimuthal=45):
+    """Plots a set of 3D points on the unit sphere.
+
+    Args:
+        points: Array with shape (num_points, 3).
+        title: String with title text.
+        marker_size: Size of scatter markers.
+        colorscale: Colorscale argument for plotly. Color scale of the scatter.
+        radius: Radius of the sphere surface. A sphere is plotted mainly to
+            help obscure points that are at the back. The radius should be
+            slightly smaller than 1 to prevent markers from being chopped off.
+        eye_polar: Polar angle of the camera eye in degrees.
+        eye_azimuthal: Azimuthal angle of the camera eye in degrees.
+
+    Returns:
+        f: Plotly figure object.
+    """
+    f = set_up_points_on_sphere()
+
+    # Get current zoom
+    eye = f.layout.scene.camera.eye
+    eye_radius = (eye["x"] ** 2 + eye["y"] ** 2 + eye["z"] ** 2) ** 0.5
+    # Set camera eye
+    eye_polar = np.deg2rad(eye_polar)
+    eye_azimuthal = np.deg2rad(eye_azimuthal)
+    eye_x = eye_radius * np.sin(eye_polar) * np.cos(eye_azimuthal)
+    eye_y = eye_radius * np.sin(eye_polar) * np.sin(eye_azimuthal)
+    eye_z = eye_radius * np.cos(eye_polar)
+    f.update_layout(scene_camera_eye={"x": eye_x, "y": eye_y, "z": eye_z})
+
+    f.update_layout(title_text=title)
+
+    marker_dict = {}
+    marker_dict["size"] = marker_size
+    marker_dict["color"] = np.arange(len(points))
+    marker_dict["colorscale"] = colorscale
+    marker_dict["showscale"] = False
+    marker_dict["colorbar"] = {"title": "Point Index",
+                               "title_font_color": "dimgray",
+                               "tickfont_color": "dimgray"}
+    marker_dict["opacity"] = 1
+
+    trace = go.Scatter3d(
+        x=points[:, 0],
+        y=points[:, 1],
+        z=points[:, 2],
+        mode="markers",
+        marker=marker_dict
+    )
+
+    f.add_trace(trace)
+
+    # Add sphere surface. Helps obscure points on the back half of sphere.
+    # Calculate a 2D grid of (x, y, z) coordinates. The grid helps define
+    # neighboring points.
+    azimuthal_angles = np.linspace(0, 2 * np.pi, 200)
+    polar_angles = np.linspace(0, np.pi, 100)
+    x = radius * np.outer(np.cos(azimuthal_angles), np.sin(polar_angles))
+    y = radius * np.outer(np.sin(azimuthal_angles), np.sin(polar_angles))
+    z = radius * np.outer(np.ones_like(azimuthal_angles), np.cos(polar_angles))
+    # Construct surface
+    surface = go.Surface(
+        x=x,
+        y=y,
+        z=z,
+        surfacecolor=z,
+        cmin=-1,
+        cmax=1,
+        colorscale=[[0, "lightgray"], [1, "white"]],
+        showscale=False,
+        opacity=1,
+        lighting={"ambient": 1, "diffuse": 0, "specular": 0, "fresnel": 0,
+                  "roughness": 1},
+        hoverinfo="skip",
+        contours={"x": {"highlight": False},
+                  "y": {"highlight": False},
+                  "z": {"highlight": False}}
+    )
+
+    f.add_trace(surface)
+
+    return f
