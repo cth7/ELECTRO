@@ -1,3 +1,3 @@
-from . import anim, constants, plot, points
+from . import anim, constants, metrics, plot, points
 
-__all__ = ["anim", "constants", "plot", "points"]
+__all__ = ["anim", "constants", "metrics", "plot", "points"]
