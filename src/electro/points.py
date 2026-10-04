@@ -44,3 +44,21 @@ def square_to_sphere(points, half_sphere=False):
     y = r * np.sin(azimuthal_angle)
     out = np.stack([x, y, z], axis=1)
     return out
+
+
+def random_square(num_points, rng=None):
+    """Generates a random set of points in the unit square.
+
+    Generates from a uniform distribution.
+
+    Args:
+        num_points: Integer specifying the number of points.
+        rng: NumPy Generator instance.
+
+    Returns:
+        Array with shape (num_points, 2).
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    return rng.uniform(low=0, high=1, size=(num_points, 2))
