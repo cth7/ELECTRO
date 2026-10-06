@@ -97,7 +97,13 @@ def points_in_square(points, title="", marker_size=12, colorscale="Viridis"):
         x=points[:, 0],
         y=points[:, 1],
         mode="markers",
-        marker=marker_dict
+        marker=marker_dict,
+        text=[f"Point {i + 1}" for i in range(len(points))],
+        hovertemplate=(
+            "x: %{x}<br>"
+            "y: %{y}"
+            "<extra><b>%{text}</b></extra>"
+        )
     )
 
     f.add_trace(trace)
