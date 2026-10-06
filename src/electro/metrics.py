@@ -1,4 +1,8 @@
+import math
+
 import numpy as np
+
+from . import geometry
 
 
 def crr(points):
@@ -37,4 +41,64 @@ def crr(points):
     expected_value = 0.5 / num_points ** 0.5
 
     out = min_d.mean() / expected_value
+    return out
+
+
+def nmna(points, polar_angle=0, azimuthal_angle=0, cap_angle=np.pi):
+    """Calculates the NMNA metric for a set of points on the unit sphere.
+
+    The Normalized Mean Nearest neighbor Angular distance metric. This metric
+    decreases to 0 as points become more clustered. This metric has a value of
+    around 1 when points are randomly distributed. This metric increases as
+    points become more evenly spaced.
+
+    This metric can be calculated for a region of the sphere. The region is a
+    spherical cap. Under default parameters, the metric is calculated for the
+    entire sphere.
+
+    Args:
+        points: Array with shape (num_points, 3). Points are expected to be on
+            the unit sphere. This should include all points, even those not on
+            the spherical cap.
+        polar_angle: Polar angle coordinate of the position of the spherical
+            cap in radians.
+        azimuthal_angle: Azimuthal angle coordinate of the position of the
+            spherical cap in radians.
+        cap_angle: Size of the spherical cap. Angle between the center and the
+            edge of the cap in radians.
+    """
+    num_points = len(points)
+
+    # Need to figure out which points are on the spherical cap
+    # First rotate points to the top of the sphere
+    # Calculate rotation matrix
+    R_y = geometry.rotation_matrix_3d_y(-polar_angle)
+    R_z = geometry.rotation_matrix_3d_z(-azimuthal_angle)
+    R = R_y @ R_z
+    # Rotate
+    points_r = R @ points.transpose()
+    points_r = points_r.transpose()
+
+    # Points that are higher than this z coordinate are on the cap
+    z = np.cos(cap_angle)
+    on_cap = points_r[:, 2] >= z
+
+    min_d = np.full(num_points, np.inf, dtype=float)
+    for i in range(num_points):
+        if not on_cap[i]:
+            continue
+
+        # Calculate angles
+        d = np.sum(points * points[i], axis=1)
+        # Need to clip to handle floating-point errors
+        d = np.arccos(np.clip(d, -1.0, 1.0))
+        d[i] = np.inf  # Exclude angle to itself from the min calculation
+        min_d[i] = d.min()
+
+    # Expected value of the nearest neighbor angular distance for randomly
+    # distributed points on the sphere
+    K = num_points - 1
+    expected_value = math.comb(2 * K, K) / 4 ** K * np.pi
+
+    out = min_d[on_cap].mean() / expected_value
     return out
