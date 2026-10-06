@@ -202,7 +202,14 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
         y=points[:, 1],
         z=points[:, 2],
         mode="markers",
-        marker=marker_dict
+        marker=marker_dict,
+        text=[f"Point {i + 1}" for i in range(len(points))],
+        hovertemplate=(
+            "x: %{x}<br>"
+            "y: %{y}<br>"
+            "z: %{z}"
+            "<extra><b>%{text}</b></extra>"
+        )
     )
 
     f.add_trace(trace)
