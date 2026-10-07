@@ -15,6 +15,13 @@ def _():
 
 
 @app.cell
+def _(np):
+    # Create NumPy random number generator
+    rng = np.random.default_rng(seed=52978)
+    return (rng,)
+
+
+@app.cell
 def _(mo):
     # Set up inputs for points parameters
     num_points = mo.ui.number(value=400, start=1, step=1, debounce=True)
@@ -26,11 +33,14 @@ def _(mo):
 
     # Set up dropdown menu for set of points
     name_of_pts = mo.ui.dropdown(
-        options=["Supergolden", "Plastic", "Custom"], value="Supergolden")
+        options=["Supergolden", "Plastic", "Custom", "Random"], value="Supergolden")
 
     # Set up inputs for the custom point
     custom_point_x = mo.ui.number(value=0, label="x", debounce=True)
     custom_point_y = mo.ui.number(value=0, label="y", debounce=True)
+
+    # Button for re-running a cell
+    regenerate = mo.ui.run_button(label="Regenerate Random")
 
     # Set up dropdown menu for colormap
     colorscale_dict = {}
@@ -52,7 +62,16 @@ def _(mo):
     radius = mo.ui.slider(value=0.960, start=0.9, stop=1, step=0.001, debounce=True, show_value=True, include_input=True)
     # Option for mapping square of points to half the sphere only
     half_sphere = mo.ui.switch(value=False)
+
+    # Spherical cap parameters for regional NMNA and plotting
+    show_cap = mo.ui.switch(value=True)
+    cap_polar = mo.ui.slider(value=0, start=0, stop=180, step=1.0, debounce=True, show_value=True, include_input=True)
+    cap_azimuthal = mo.ui.slider(value=0, start=0, stop=360, step=1.0, debounce=True, show_value=True, include_input=True)
+    cap_angle = mo.ui.slider(value=15, start=0, stop=180, step=1.0, debounce=True, show_value=True, include_input=True)
     return (
+        cap_angle,
+        cap_azimuthal,
+        cap_polar,
         colorscale,
         custom_point_x,
         custom_point_y,
@@ -63,7 +82,9 @@ def _(mo):
         offset_x,
         offset_y,
         radius,
+        regenerate,
         reverse,
+        show_cap,
     )
 
 
@@ -120,22 +141,26 @@ def _(
 
 
 @app.cell
-def _(
-    colorscale,
-    ele,
-    marker_size,
-    name_of_pts,
-    square_custom,
-    square_plastic,
-    square_supergolden,
-):
-    # Plot points in unit square
-    name = name_of_pts.value
+def _(ele, num_points, regenerate, rng):
+    _ = regenerate
+    square_random = ele.points.random_square(num_points.value, rng=rng)
+    return (square_random,)
 
+
+@app.cell
+def _(square_custom, square_plastic, square_random, square_supergolden):
     square = {}
     square["Supergolden"] = square_supergolden
     square["Plastic"] = square_plastic
+    square["Random"] = square_random
     square["Custom"] = square_custom
+    return (square,)
+
+
+@app.cell
+def _(colorscale, ele, marker_size, name_of_pts, square):
+    # Plot points in unit square
+    name = name_of_pts.value
 
     fig1 = ele.plot.points_in_square(square[name], name, marker_size.value, colorscale.value)
     # fig1 = ele.anim.points_in_square(square[name], title=name,
@@ -144,8 +169,16 @@ def _(
 
 
 @app.cell
+def _(ele, name, square):
+    # Calculate CRR
+    crr = ele.metrics.crr(square[name])
+    return (crr,)
+
+
+@app.cell
 def _(
     colorscale,
+    crr,
     custom_point_x,
     custom_point_y,
     marker_size,
@@ -159,6 +192,7 @@ def _(
     point_custom,
     point_plastic,
     point_supergolden,
+    regenerate,
     reverse,
 ):
     # Arrange GUI
@@ -168,20 +202,32 @@ def _(
         point = point_plastic
     elif name in ["Custom"]:
         point = point_custom
+    elif name in ["Random"]:
+        point = ["N/A", "N/A"]
 
     params_list = []
     params_list += [mo.md("Name"), name_of_pts]
+
     if name == "Custom":
         params_list += [mo.md("Custom Point (Increment)"), custom_point_x, custom_point_y]
 
-    params_list += [mo.hstack([reverse, mo.md("Reverse Order of Components")], justify="start")]
-    params_list += [mo.md("Point (Increment)"),
-                    mo.md(f"x: {point[0]}"), mo.md(f"y: {point[1]}")]
+    if name not in ["Random"]:
+        params_list += [mo.hstack([reverse, mo.md("Reverse Order of Components")], justify="start")]
+        params_list += [mo.md("Point (Increment)"),
+                        mo.md(f"x: {point[0]}"), mo.md(f"y: {point[1]}")]
+
     params_list += [mo.md("Total Number of Points"), num_points]
-    params_list += [mo.md("Position Offset"), offset_x, offset_y]
-    params_list += [mo.md("Index of Initial Point"), n0]
+
+    if name not in ["Random"]:
+        params_list += [mo.md("Position Offset"), offset_x, offset_y]
+        params_list += [mo.md("Index of Initial Point"), n0]
+
+    if name == "Random":
+        params_list += [regenerate]
+
     params_list += [mo.md("Marker Size"), marker_size]
     params_list += [mo.md("Color Scale"), colorscale]
+    params_list += [mo.md(f"CRR: {crr}")]
 
     params = mo.vstack(params_list)
     return (params,)
@@ -195,63 +241,125 @@ def _(fig1, mo, params):
 
 
 @app.cell
-def _(ele, half_sphere, square_custom, square_plastic, square_supergolden):
+def _(
+    ele,
+    half_sphere,
+    square_custom,
+    square_plastic,
+    square_random,
+    square_supergolden,
+):
     # Calculate points on sphere
     sphere_supergolden = ele.points.square_to_sphere(square_supergolden, half_sphere=half_sphere.value)
 
     sphere_plastic = ele.points.square_to_sphere(square_plastic, half_sphere=half_sphere.value)
 
     sphere_custom = ele.points.square_to_sphere(square_custom, half_sphere=half_sphere.value)
-    return sphere_custom, sphere_plastic, sphere_supergolden
+
+    sphere_random = ele.points.square_to_sphere(square_random, half_sphere=half_sphere.value)
+    return sphere_custom, sphere_plastic, sphere_random, sphere_supergolden
 
 
 @app.cell
-def _(
-    colorscale,
-    ele,
-    marker_size,
-    name,
-    radius,
-    sphere_custom,
-    sphere_plastic,
-    sphere_supergolden,
-):
-    # Plot points on sphere
+def _(sphere_custom, sphere_plastic, sphere_random, sphere_supergolden):
     sphere = {}
     sphere["Supergolden"] = sphere_supergolden
     sphere["Plastic"] = sphere_plastic
     sphere["Custom"] = sphere_custom
-
-    fig2 = ele.plot.points_on_sphere(sphere[name], title=name,
-        marker_size=marker_size.value, colorscale=colorscale.value, radius=radius.value)
-    return (fig2,)
+    sphere["Random"] = sphere_random
+    return (sphere,)
 
 
 @app.cell
 def _(
+    cap_angle,
+    cap_azimuthal,
+    cap_polar,
+    colorscale,
+    ele,
+    marker_size,
+    name,
+    np,
+    radius,
+    show_cap,
+    sphere,
+):
+    # Plot points on sphere
+    fig2 = ele.plot.points_on_sphere(
+        sphere[name],
+        title=name,
+        marker_size=marker_size.value,
+        colorscale=colorscale.value,
+        radius=radius.value,
+        show_cap=show_cap.value,
+        cap_polar=np.radians(cap_polar.value),
+        cap_azimuthal=np.radians(cap_azimuthal.value),
+        cap_angle=np.radians(cap_angle.value)
+    )
+    return (fig2,)
+
+
+@app.cell
+def _(cap_angle, cap_azimuthal, cap_polar, ele, name, np, sphere):
+    # Calculate NMNA
+    nmna = ele.metrics.nmna(
+        sphere[name],
+        polar_angle=np.radians(cap_polar.value),
+        azimuthal_angle=np.radians(cap_azimuthal.value),
+        cap_angle=np.radians(cap_angle.value)
+    )
+    return (nmna,)
+
+
+@app.cell
+def _(
+    cap_angle,
+    cap_azimuthal,
+    cap_polar,
     colorscale,
     half_sphere,
     marker_size,
     mo,
     n0,
+    name,
     name_of_pts,
+    nmna,
     num_points,
     offset_x,
     offset_y,
     radius,
+    regenerate,
     reverse,
+    show_cap,
 ):
     # Arrange GUI
     controls_list = []
     controls_list += [mo.md("Name"), name_of_pts]
-    controls_list += [mo.hstack([reverse, mo.md("Reverse Order of Components")], justify="start")]
+
+    if name not in ["Random"]:
+        controls_list += [mo.hstack([reverse, mo.md("Reverse Order of Components")], justify="start")]
+
     controls_list += [mo.md("Total Number of Points"), num_points]
-    controls_list += [mo.md("Position Offset"), offset_x, offset_y]
-    controls_list += [mo.md("Index of Initial Point"), n0]
+
+    if name not in ["Random"]:
+        controls_list += [mo.md("Position Offset"), offset_x, offset_y]
+        controls_list += [mo.md("Index of Initial Point"), n0]
+
+    if name == "Random":
+        controls_list += [regenerate]
+
     controls_list += [mo.md("Marker Size"), marker_size]
     controls_list += [mo.md("Color Scale"), colorscale]
     controls_list += [mo.md("Radius of Inner Sphere"), radius]
     controls_list += [mo.md("Map to Half of Sphere Only"), half_sphere]
+
+    controls_list += [mo.md("Show Spherical Cap"), show_cap]
+    if show_cap.value:
+        controls_list += [mo.md("Spherical Cap Polar Coordinate"), cap_polar]
+        controls_list += [mo.md("Spherical Cap Azimuthal Coordinate"), cap_azimuthal]
+        controls_list += [mo.md("Spherical Cap Size"), cap_angle]
+
+    controls_list += [mo.md(f"NMNA: {nmna}")]
 
     controls = mo.vstack(controls_list)
     return (controls,)
