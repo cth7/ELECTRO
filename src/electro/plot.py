@@ -227,24 +227,25 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
             "<extra><b>%{text}</b></extra>"
         )
     )
-
     f.add_trace(trace)
 
     # Add sphere surface. Helps obscure points on the back half of sphere.
     # Calculate a 2D grid of (x, y, z) coordinates. The grid helps define
     # neighboring points.
-    sphere_res = 100
-    azimuthal_angles = np.linspace(0, 2 * np.pi, 200)
-    polar_angles = np.linspace(0, np.pi, 100)
-    x = radius * np.outer(np.cos(azimuthal_angles), np.sin(polar_angles))
-    y = radius * np.outer(np.sin(azimuthal_angles), np.sin(polar_angles))
-    z = radius * np.outer(np.ones_like(azimuthal_angles), np.cos(polar_angles))
+    surf_res = 100
+    azimuthals = np.linspace(0, 2 * np.pi, 2 * surf_res)
+    polars = np.linspace(0, np.pi, surf_res)
+    surf_grid = np.zeros((2 * surf_res, surf_res, 3), dtype=float)
+    surf_grid[:, :, 0] = np.outer(np.cos(azimuthals), np.sin(polars))
+    surf_grid[:, :, 1] = np.outer(np.sin(azimuthals), np.sin(polars))
+    surf_grid[:, :, 2] = np.outer(np.ones_like(azimuthals), np.cos(polars))
+    surf_grid = radius * surf_grid
     # Construct surface
     surface = go.Surface(
-        x=x,
-        y=y,
-        z=z,
-        surfacecolor=z,
+        x=surf_grid[:, :, 0],
+        y=surf_grid[:, :, 1],
+        z=surf_grid[:, :, 2],
+        surfacecolor=surf_grid[:, :, 2],
         cmin=-1,
         cmax=1,
         colorscale=[[0, "lightgray"], [1, "white"]],
@@ -257,14 +258,13 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
                   "y": {"highlight": False},
                   "z": {"highlight": False}}
     )
-
     f.add_trace(surface)
 
     if show_cap and cap_angle > 0:
         # Add spherical cap
-        azimuthals = np.linspace(0, 2 * np.pi, 2 * sphere_res)
-        polars = np.linspace(0, np.pi, sphere_res)
-        cap_grid = np.zeros((2 * sphere_res, sphere_res, 3), dtype=float)
+        azimuthals = np.linspace(0, 2 * np.pi, 2 * surf_res)
+        polars = np.linspace(0, np.pi, surf_res)
+        cap_grid = np.zeros((2 * surf_res, surf_res, 3), dtype=float)
         cap_grid[:, :, 0] = np.outer(np.cos(azimuthals), np.sin(polars))
         cap_grid[:, :, 1] = np.outer(np.sin(azimuthals), np.sin(polars))
         cap_grid[:, :, 2] = np.outer(np.ones_like(azimuthals), np.cos(polars))
@@ -276,7 +276,7 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
         R_z = geometry.rotation_matrix_3d_z(cap_azimuthal)
         R = R_z @ R_y
         cap_grid = R @ cap_grid.reshape((-1, 3)).transpose()
-        cap_grid = cap_grid.transpose().reshape((2 * sphere_res, -1, 3))
+        cap_grid = cap_grid.transpose().reshape((2 * surf_res, -1, 3))
         cap_grid = (radius + 0.01) * cap_grid
         # Construct cap
         spherical_cap = go.Surface(
