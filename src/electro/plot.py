@@ -163,7 +163,7 @@ def set_up_points_on_sphere():
 
 
 def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
-                     radius=0.99, eye_polar=25, eye_azimuthal=45,
+                     radius=0.99, eye_polar=np.pi / 6, eye_azimuthal=0,
                      show_cap=True, cap_polar=0, cap_azimuthal=0, cap_angle=0):
     """Plots a set of 3D points on the unit sphere.
 
@@ -175,8 +175,8 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
         radius: Radius of the sphere surface. A sphere is plotted mainly to
             help obscure points that are at the back. The radius should be
             slightly smaller than 1 to prevent markers from being chopped off.
-        eye_polar: Polar angle of the camera eye in degrees.
-        eye_azimuthal: Azimuthal angle of the camera eye in degrees.
+        eye_polar: Polar angle of the camera eye in radians.
+        eye_azimuthal: Azimuthal angle of the camera eye in radians.
         show_cap: Boolean controlling whether spherical cap is shown.
         cap_polar: Polar angle coordinate of the position of the spherical
             cap in radians.
@@ -194,8 +194,6 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
     eye = f.layout.scene.camera.eye
     eye_radius = (eye["x"] ** 2 + eye["y"] ** 2 + eye["z"] ** 2) ** 0.5
     # Set camera eye
-    eye_polar = np.deg2rad(eye_polar)
-    eye_azimuthal = np.deg2rad(eye_azimuthal)
     eye_x = eye_radius * np.sin(eye_polar) * np.cos(eye_azimuthal)
     eye_y = eye_radius * np.sin(eye_polar) * np.sin(eye_azimuthal)
     eye_z = eye_radius * np.cos(eye_polar)
