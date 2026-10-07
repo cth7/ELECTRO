@@ -1,6 +1,8 @@
 import numpy as np
 import plotly.graph_objects as go
 
+from . import geometry
+
 
 def set_up_points_in_square():
     """Sets up a default frame for the figure.
@@ -161,7 +163,8 @@ def set_up_points_on_sphere():
 
 
 def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
-                     radius=0.99, eye_polar=25, eye_azimuthal=45):
+                     radius=0.99, eye_polar=25, eye_azimuthal=45,
+                     show_cap=True, cap_polar=0, cap_azimuthal=0, cap_angle=0):
     """Plots a set of 3D points on the unit sphere.
 
     Args:
@@ -174,6 +177,13 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
             slightly smaller than 1 to prevent markers from being chopped off.
         eye_polar: Polar angle of the camera eye in degrees.
         eye_azimuthal: Azimuthal angle of the camera eye in degrees.
+        show_cap: Boolean controlling whether spherical cap is shown.
+        cap_polar: Polar angle coordinate of the position of the spherical
+            cap in radians.
+        cap_azimuthal: Azimuthal angle coordinate of the position of the
+            spherical cap in radians.
+        cap_angle: Size of the spherical cap. Angle between the center and the
+            edge of the cap in radians.
 
     Returns:
         f: Plotly figure object.
@@ -223,6 +233,7 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
     # Add sphere surface. Helps obscure points on the back half of sphere.
     # Calculate a 2D grid of (x, y, z) coordinates. The grid helps define
     # neighboring points.
+    sphere_res = 100
     azimuthal_angles = np.linspace(0, 2 * np.pi, 200)
     polar_angles = np.linspace(0, np.pi, 100)
     x = radius * np.outer(np.cos(azimuthal_angles), np.sin(polar_angles))
@@ -248,5 +259,41 @@ def points_on_sphere(points, title="", marker_size=12, colorscale="Viridis",
     )
 
     f.add_trace(surface)
+
+    if show_cap and cap_angle > 0:
+        # Add spherical cap
+        azimuthals = np.linspace(0, 2 * np.pi, 2 * sphere_res)
+        polars = np.linspace(0, np.pi, sphere_res)
+        cap_grid = np.zeros((2 * sphere_res, sphere_res, 3), dtype=float)
+        cap_grid[:, :, 0] = np.outer(np.cos(azimuthals), np.sin(polars))
+        cap_grid[:, :, 1] = np.outer(np.sin(azimuthals), np.sin(polars))
+        cap_grid[:, :, 2] = np.outer(np.ones_like(azimuthals), np.cos(polars))
+        # Get points on cap
+        on_cap = cap_grid[0, :, 2] >= np.cos(cap_angle)
+        cap_grid = cap_grid[:, on_cap, :]
+        # Rotate cap to the desired position
+        R_y = geometry.rotation_matrix_3d_y(cap_polar)
+        R_z = geometry.rotation_matrix_3d_z(cap_azimuthal)
+        R = R_z @ R_y
+        cap_grid = R @ cap_grid.reshape((-1, 3)).transpose()
+        cap_grid = cap_grid.transpose().reshape((2 * sphere_res, -1, 3))
+        cap_grid = (radius + 0.01) * cap_grid
+        # Construct cap
+        spherical_cap = go.Surface(
+            x=cap_grid[:, :, 0],
+            y=cap_grid[:, :, 1],
+            z=cap_grid[:, :, 2],
+            surfacecolor=np.ones_like(cap_grid[:, :, 2]),
+            colorscale=[[0, "mediumaquamarine"], [1, "mediumaquamarine"]],
+            showscale=False,
+            opacity=0.5,
+            lighting={"ambient": 1, "diffuse": 0, "specular": 0, "fresnel": 0,
+                    "roughness": 1},
+            hoverinfo="skip",
+            contours={"x": {"highlight": False},
+                      "y": {"highlight": False},
+                      "z": {"highlight": False}}
+        )
+        f.add_trace(spherical_cap)
 
     return f
