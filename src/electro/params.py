@@ -70,6 +70,27 @@ def characteristic_angle(sphere_sizes):
     return out
 
 
+def alpha(sphere_sizes):
+    """Calculates the weighting for the energies of spheres of each size.
+
+    The weighting is the cube of the characteristic length. The force between
+    a pair of points at the characteristic length apart is proportional to
+    1 / length ** 2, so this weighting makes the forces from each sphere size
+    relative to its characteristic length. This effectively scales up the
+    forces in smaller spheres and scales down the forces in larger spheres.
+
+    Args:
+        sphere_sizes: Array of sphere sizes. The sphere size is the number of
+            points in a sphere.
+
+    Returns:
+        out: Array of weightings. Array has the same length as the number of
+            stages in the optimization.
+    """
+    out = characteristic_length(sphere_sizes) ** 3
+    return out
+
+
 def paper(num_points):
     """Returns all parameter values used in the paper.
 
@@ -82,4 +103,5 @@ def paper(num_points):
     """
     out = {}
     out["sphere_sizes"] = sphere_sizes_paper(num_points)
+    out["alpha"] = alpha(out["sphere_sizes"])
     return out
