@@ -42,12 +42,10 @@ def characteristic_length(sphere_sizes):
             points in a sphere.
 
     Returns:
-        out: Array of characteristic lengths with the same shape as
-            sphere_sizes.
+        out: Array of characteristic lengths. Array has the same length as the
+            number of stages in the optimization.
     """
-    if np.isscalar(sphere_sizes):
-        sphere_sizes = [sphere_sizes]
-
+    sphere_sizes = np.atleast_1d(sphere_sizes)
     sphere_sizes = np.asarray(sphere_sizes)
     out = np.minimum(2.0, (4 * np.pi / sphere_sizes) ** 0.5)
     return out
@@ -64,8 +62,8 @@ def characteristic_angle(sphere_sizes):
             points in a sphere.
 
     Returns:
-        out: Array of characteristic angles in radians with the same shape as
-            sphere_sizes.
+        out: Array of characteristic angles in radians. Array has the same
+            length as the number of stages in the optimization.
     """
     length = characteristic_length(sphere_sizes)
     out = 2 * np.arcsin(length / 2)
