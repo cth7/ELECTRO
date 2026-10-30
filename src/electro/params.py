@@ -29,7 +29,7 @@ def sphere_sizes_paper(num_points):
     return np.array(out)
 
 
-def characteristic_length(sphere_sizes):
+def characteristic_lengths(sphere_sizes):
     """Calculates the characteristic length of a unit sphere with m points.
 
     The characteristic length is the side length of a square with area
@@ -51,7 +51,7 @@ def characteristic_length(sphere_sizes):
     return out
 
 
-def characteristic_angle(sphere_sizes):
+def characteristic_angles(sphere_sizes):
     """Calculates the characteristic angle of a unit sphere with m points.
 
     The characteristic angle is the angle subtended at the center of the unit
@@ -65,12 +65,12 @@ def characteristic_angle(sphere_sizes):
         out: Array of characteristic angles in radians. Array has the same
             length as the number of stages in the optimization.
     """
-    length = characteristic_length(sphere_sizes)
+    length = characteristic_lengths(sphere_sizes)
     out = 2 * np.arcsin(length / 2)
     return out
 
 
-def alpha(sphere_sizes):
+def alphas(sphere_sizes):
     """Calculates the weighting for the energies of spheres of each size.
 
     The weighting is the cube of the characteristic length. The force between
@@ -87,11 +87,11 @@ def alpha(sphere_sizes):
         out: Array of weightings. Array has the same length as the number of
             stages in the optimization.
     """
-    out = characteristic_length(sphere_sizes) ** 3
+    out = characteristic_lengths(sphere_sizes) ** 3
     return out
 
 
-def stepsize_paper(sphere_sizes, num_points, scale=0.08):
+def stepsizes_paper(sphere_sizes, num_points, scale=0.08):
     """Calculates the step size for each stage of the optimization.
 
     Points in the middle of the sequence are contained in more spheres than
@@ -131,6 +131,6 @@ def paper(num_points):
     """
     out = {}
     out["sphere_sizes"] = sphere_sizes_paper(num_points)
-    out["alpha"] = alpha(out["sphere_sizes"])
-    out["stepsize"] = stepsize_paper(out["sphere_sizes"], num_points)
+    out["alphas"] = alphas(out["sphere_sizes"])
+    out["stepsizes"] = stepsizes_paper(out["sphere_sizes"], num_points)
     return out
