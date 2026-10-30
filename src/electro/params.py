@@ -119,6 +119,50 @@ def stepsizes_paper(sphere_sizes, num_points, scale=0.08):
     return out
 
 
+def max_displacements_paper(sphere_sizes, fraction=0.5):
+    """Calculates the maximum angular displacement for each stage.
+
+    When a stage adds a new sphere size, points that did not previously
+    interact may be very close to each other. The resulting large forces would
+    displace points far from their near optimal positions, so angular
+    displacements larger than this value get clipped. The value is a fraction
+    of the characteristic angle of the largest sphere size in the stage.
+
+    Args:
+        sphere_sizes: Array of sphere sizes. The sphere size is the number of
+            points in a sphere.
+        fraction: Fraction of the characteristic angle.
+
+    Returns:
+        out: Array of maximum angular displacements in radians. Array has the
+            same length as the number of stages in the optimization.
+    """
+    out = fraction * characteristic_angles(sphere_sizes)
+    return out
+
+
+def tolerances_paper(sphere_sizes, fraction=0.01):
+    """Calculates the criterion for advancing past each stage.
+
+    The optimization advances to the next stage when no point moved more than
+    this value. The value is a fraction of the characteristic angle of the
+    sphere size to be added in the next stage. The last stage has no next
+    stage, so its value is 0.
+
+    Args:
+        sphere_sizes: Array of sphere sizes. The sphere size is the number of
+            points in a sphere.
+        fraction: Fraction of the characteristic angle.
+
+    Returns:
+        out: Array of tolerances in radians. Array has the same length as the
+            number of stages in the optimization.
+    """
+    next_angles = characteristic_angles(sphere_sizes)[1:]
+    out = np.append(fraction * next_angles, 0.0)
+    return out
+
+
 def paper(num_points):
     """Returns all parameter values used in the paper.
 
@@ -133,4 +177,6 @@ def paper(num_points):
     out["sphere_sizes"] = sphere_sizes_paper(num_points)
     out["alphas"] = alphas(out["sphere_sizes"])
     out["stepsizes"] = stepsizes_paper(out["sphere_sizes"], num_points)
+    out["max_displacements"] = max_displacements_paper(out["sphere_sizes"])
+    out["tolerances"] = tolerances_paper(out["sphere_sizes"])
     return out
