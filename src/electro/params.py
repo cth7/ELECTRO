@@ -91,6 +91,34 @@ def alpha(sphere_sizes):
     return out
 
 
+def stepsize_paper(sphere_sizes, num_points, scale=0.08):
+    """Calculates the step size for each stage of the optimization.
+
+    Points in the middle of the sequence are contained in more spheres than
+    points at the ends, so the forces on them are larger. The step size
+    approximately averages the forces by dividing by the number of spheres
+    that contain the middle point. For a sphere size m, this number is
+    min(m, num_points - m + 1). The sum is over the sphere sizes included in
+    each stage. The scale was determined empirically.
+
+    Args:
+        sphere_sizes: Array of sphere sizes. The sphere size is the number of
+            points in a sphere.
+        num_points: Integer specifying the total number of points in the
+            optimization.
+        scale: Numerator of the step size.
+
+    Returns:
+        out: Array of step sizes. Array has the same length as the number of
+            stages in the optimization.
+    """
+    sphere_sizes = np.atleast_1d(sphere_sizes)
+    num_spheres = np.minimum(sphere_sizes, num_points - sphere_sizes + 1)
+    # Each stage includes the sphere sizes of all previous stages
+    out = scale / np.cumsum(num_spheres)
+    return out
+
+
 def paper(num_points):
     """Returns all parameter values used in the paper.
 
@@ -104,4 +132,5 @@ def paper(num_points):
     out = {}
     out["sphere_sizes"] = sphere_sizes_paper(num_points)
     out["alpha"] = alpha(out["sphere_sizes"])
+    out["stepsize"] = stepsize_paper(out["sphere_sizes"], num_points)
     return out
