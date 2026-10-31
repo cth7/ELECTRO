@@ -1,4 +1,5 @@
-from array_api_compat import array_namespace, device
+import array_api_compat
+from array_api_compat import array_namespace
 
 
 def pair_weights(i, j, sphere_sizes, alphas, num_points, dtype=None):
@@ -25,6 +26,7 @@ def pair_weights(i, j, sphere_sizes, alphas, num_points, dtype=None):
         out: Array of weights with the shape of i and j broadcast together.
     """
     xp = array_namespace(i, j)
+    device = array_api_compat.device(i)
     if dtype is None:
         dtype = xp.float64
 
@@ -32,7 +34,7 @@ def pair_weights(i, j, sphere_sizes, alphas, num_points, dtype=None):
     first = xp.minimum(i, j)
     last = xp.maximum(i, j)
 
-    out = xp.zeros(first.shape, dtype=dtype, device=device(first))
+    out = xp.zeros(first.shape, dtype=dtype, device=device)
     # Convert to Python ints and floats to avoid conflict between different
     # types of arrays.
     sphere_sizes = sphere_sizes.tolist()
