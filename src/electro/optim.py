@@ -70,8 +70,8 @@ def weighted_energy(points, sphere_sizes, alphas, block_size=1024):
 
     Pairs are processed in blocks to limit memory use. The result does not
     depend on block_size. A block is a set of consecutive rows in the matrix.
-    The rows are truncated to only include pairs of points that can fit in a
-    sphere of the largest size.
+    The rows are truncated/shortened to only include pairs of points that can
+    fit in a sphere of the largest size.
 
     Args:
         points: Array with shape (num_points, 3). Points are expected to be on
@@ -138,8 +138,8 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
 
     Pairs are processed in blocks to limit memory use. The result does not
     depend on block_size. A block is a set of consecutive rows in the matrix.
-    The rows are truncated to only include points that can fit in a sphere of
-    the largest size with at least one of the points in the block.
+    The rows are truncated/shortened to only include points j that can fit in a
+    sphere of the largest size with at least one of the points i in the block.
 
     Args:
         points: Array with shape (num_points, 3). Points are expected to be on
