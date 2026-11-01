@@ -192,3 +192,41 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
         net_forces.append(xp.sum(xp.expand_dims(scale, axis=2) * diff, axis=1))
 
     return xp.concat(net_forces, axis=0)
+
+
+def apply_forces(points, forces, stepsize):
+    """Moves each point along its net force.
+
+    Each point is moved by the step size multiplied by its net force. The
+    moved points are no longer on the unit sphere.
+
+    Args:
+        points: Array with shape (num_points, 3). Points are expected to be on
+            the unit sphere.
+        forces: Array of net forces with shape (num_points, 3).
+        stepsize: Float specifying the step size for the current stage.
+
+    Returns:
+        out: Array of moved points with shape (num_points, 3).
+    """
+    # Convert to a Python float to avoid conflict between different types of
+    # arrays and to keep the data type of points.
+    out = points + float(stepsize) * forces
+    return out
+
+
+def project_to_sphere(points):
+    """Projects each point onto the unit sphere.
+
+    Each point is normalized, which moves it along the line through the point
+    and the center of the sphere.
+
+    Args:
+        points: Array with shape (num_points, 3).
+
+    Returns:
+        out: Array of points on the unit sphere with shape (num_points, 3).
+    """
+    xp = array_namespace(points)
+    out = points / xp.sqrt(xp.sum(points * points, axis=1, keepdims=True))
+    return out
