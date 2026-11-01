@@ -88,12 +88,13 @@ def nmna(points, polar_angle=0, azimuthal_angle=0, cap_angle=np.pi):
         if not on_cap[i]:
             continue
 
-        # Calculate angles
-        d = np.sum(points * points[i], axis=1)
-        # Need to clip to handle floating-point errors
-        d = np.arccos(np.clip(d, -1.0, 1.0))
-        d[i] = np.inf  # Exclude angle to itself from the min calculation
-        min_d[i] = d.min()
+        # The nearest neighbor by straight-line distance is also the nearest
+        # neighbor by angle, so only one angle needs to be calculated
+        diff = points - points[i]
+        d = np.sum(diff * diff, axis=1)
+        d[i] = np.inf  # Exclude distance to itself from the min calculation
+        j = np.argmin(d)
+        min_d[i] = geometry.angular_distances(points[i], points[j])
 
     # Expected value of the nearest neighbor angular distance for randomly
     # distributed points on the sphere
