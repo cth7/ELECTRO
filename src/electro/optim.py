@@ -150,8 +150,7 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
         block_size: Integer specifying the number of points in each block.
 
     Returns:
-        out: Array of forces with shape (num_points, 3). The forces are not
-            projected onto the surface of the sphere.
+        out: Array of forces with shape (num_points, 3).
     """
     xp = array_namespace(points)
     device = array_api_compat.device(points)
@@ -190,6 +189,13 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
 
         scale = weights / (distances_sq * xp.sqrt(distances_sq))
         net_forces.append(xp.sum(xp.expand_dims(scale, axis=2) * diff, axis=1))
+
+    # TODO: The net force can be split into a radial component and a tangential
+    # component. A force with a large radial component moves the point further
+    # off the sphere, which reduces the magnitude of its angular movement. This
+    # is the negative gradient of the energy and is what was used in the paper.
+    # It may be worth trying to discard the radial component and only use the
+    # tangential component, which would also require readjusting the step size.
 
     return xp.concat(net_forces, axis=0)
 
