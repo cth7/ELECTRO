@@ -1,5 +1,9 @@
+import math
+
 import array_api_compat
 from array_api_compat import array_namespace
+
+from . import geometry
 
 
 def pair_weights(i, j, sphere_sizes, alphas, num_points, dtype=None):
@@ -235,4 +239,47 @@ def project_to_sphere(points):
     """
     xp = array_namespace(points)
     out = points / xp.sqrt(xp.sum(points * points, axis=1, keepdims=True))
+    return out
+
+
+def clip_displacements(old_points, new_points, max_displacement):
+    """Limits the angle each point moved along the unit sphere.
+
+    A point that moved further than the maximum is instead placed on the great
+    circle through its old and new positions, at the maximum angle from its old
+    position. This keeps the direction the point moved in.
+
+    Args:
+        old_points: Array with shape (num_points, 3). Points are expected to
+            be on the unit sphere.
+        new_points: Array with shape (num_points, 3). Points are expected to
+            be on the unit sphere.
+        max_displacement: Float specifying the maximum angular displacement in
+            radians. Use math.inf to disable clipping.
+
+    Returns:
+        out: Array of points on the unit sphere with shape (num_points, 3).
+    """
+    xp = array_namespace(old_points, new_points)
+    # No angle is larger than pi, so this has no effect on the result. It keeps
+    # the value finite for math.cos and math.sin.
+    max_displacement = min(float(max_displacement), math.pi)
+
+    angles = geometry.angular_distances(old_points, new_points)
+    is_clipped = xp.expand_dims(angles > max_displacement, axis=1)
+
+    # Calculate the unit vector at each old point that is tangent to the sphere
+    # and points along the great circle toward the new point. Starting from the
+    # difference between the points keeps precision for small displacements.
+    diff = new_points - old_points
+    radial = xp.sum(diff * old_points, axis=1, keepdims=True)
+    tangents = diff - radial * old_points
+    norms = xp.sqrt(xp.sum(tangents * tangents, axis=1, keepdims=True))
+    # A point that did not move has no tangent vector. Avoid dividing by 0.
+    norms = xp.where(is_clipped, norms, xp.ones_like(norms))
+    tangents = tangents / norms
+
+    clipped_points = (math.cos(max_displacement) * old_points
+                      + math.sin(max_displacement) * tangents)
+    out = xp.where(is_clipped, clipped_points, new_points)
     return out
