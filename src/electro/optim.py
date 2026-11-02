@@ -268,6 +268,8 @@ def clip_displacements(old_points, new_points, max_displacement):
     angles = geometry.angular_distances(old_points, new_points)
     is_clipped = xp.expand_dims(angles > max_displacement, axis=1)
 
+    # TODO: Add early exit when no points need clipping
+
     # Calculate the unit vector at each old point that is tangent to the sphere
     # and points along the great circle toward the new point. Starting from the
     # difference between the points keeps precision for small displacements.
@@ -282,4 +284,5 @@ def clip_displacements(old_points, new_points, max_displacement):
     clipped_points = (math.cos(max_displacement) * old_points
                       + math.sin(max_displacement) * tangents)
     out = xp.where(is_clipped, clipped_points, new_points)
+    # TODO: Considering projecting points back to sphere after clipping
     return out
