@@ -7,10 +7,7 @@ from . import geometry
 
 
 def apply_forces(points, forces, stepsize):
-    """Moves each point along its net force.
-
-    Each point is moved by the step size multiplied by its net force. The
-    moved points are no longer on the unit sphere.
+    """Moves each point by its net force multiplied by the step size.
 
     Args:
         points: Array with shape (num_points, 3). Points are expected to be on
@@ -30,9 +27,6 @@ def apply_forces(points, forces, stepsize):
 def project_to_sphere(points):
     """Projects each point onto the unit sphere.
 
-    Each point is normalized, which moves it along the line through the point
-    and the center of the sphere.
-
     Args:
         points: Array with shape (num_points, 3).
 
@@ -45,11 +39,7 @@ def project_to_sphere(points):
 
 
 def clip_displacements(old_points, new_points, max_displacement):
-    """Limits the angle each point moved along the unit sphere.
-
-    A point that moved further than the maximum is instead placed on the great
-    circle through its old and new positions, at the maximum angle from its old
-    position. This keeps the direction the point moved in.
+    """Clips the angle that each point moved, preserving the direction.
 
     Args:
         old_points: Array with shape (num_points, 3). Points are expected to
