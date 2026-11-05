@@ -62,3 +62,20 @@ def random_square(num_points, rng=None):
         rng = np.random.default_rng()
 
     return rng.uniform(low=0, high=1, size=(num_points, 2))
+
+
+def random_sphere(num_points, rng=None, half_sphere=False):
+    """Generates points randomly distributed on the unit sphere.
+
+    Args:
+        num_points: Integer specifying the number of points.
+        rng: NumPy Generator instance.
+        half_sphere: Boolean. If true points get mapped to the top hemisphere
+            only.
+
+    Returns:
+        points: Array with shape (num_points, 3).
+    """
+    points = random_square(num_points, rng=rng)
+    points = square_to_sphere(points, half_sphere=half_sphere)
+    return points
