@@ -55,7 +55,7 @@ def pair_weights(i, j, sphere_sizes, alphas, num_points, dtype=None):
     return out
 
 
-def weighted_energy(points, sphere_sizes, alphas, block_size=1024):
+def potential_energy(points, sphere_sizes, alphas, block_size=1024):
     """Calculates the objective function G(S) for a set of points.
 
     This is the sum over all pairs of points of the pair weight divided by the
@@ -127,10 +127,10 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
     cube of the distance between them. Only pairs of points that are both
     contained in a sphere have non-zero weights, so other pairs are skipped.
 
-    Similar to weighted_energy, the calculation of all pairs of points can be
+    Similar to potential_energy, the calculation of all pairs of points can be
     visualized as filling a square matrix, where the indices of the rows, i,
     correspond to the point the force acts on and the indices of the columns,
-    j, correspond to the point exerting the force. Unlike weighted_energy,
+    j, correspond to the point exerting the force. Unlike potential_energy,
     each row needs the columns on both sides of the diagonal, so each pair of
     points is calculated twice. This avoids having to scatter the force of
     each pair to two different rows, which is slow and not part of the array
