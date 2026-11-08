@@ -104,7 +104,7 @@ class Electro:
         iteration: Number of completed iterations.
         stage_iteration: Number of completed iterations in the current stage.
         elapsed: Total seconds spent in iterations, excluding the time spent
-            evaluating the loss and saving checkpoints.
+            evaluating the energy function and saving checkpoints.
         converged: True when the last stage met its tolerance.
         stage_starts: List of (iteration, elapsed) at the start of each
             stage that has been reached.
