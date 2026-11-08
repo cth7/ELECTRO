@@ -113,7 +113,8 @@ class Electro:
     """
 
     def __init__(self, initial_points, sphere_sizes, alphas, stepsizes,
-                 max_displacements, tolerances, block_size=1024):
+                 max_displacements, tolerances, energy_every=0,
+                 block_size=1024):
         """Initializes the optimizer.
 
         All arrays of parameters have one value per stage.
@@ -132,6 +133,10 @@ class Electro:
             tolerances: Array of angular displacements in radians. The
                 optimization advances past stage k when no point moves more
                 than tolerances[k].
+            energy_every: Integer. Evaluates the energy function every
+                energy_every iterations. 0 never evaluates it. Values not
+                evaluated are recorded as NaN. The energy is evaluated after
+                the points are updated.
             block_size: Integer passed to the force and energy functions.
                 Computations are done in blocks of this size.
         """
@@ -141,6 +146,7 @@ class Electro:
         self.max_displacements = np.asarray(max_displacements,
                                             dtype=np.float64)
         self.tolerances = np.asarray(tolerances, dtype=np.float64)
+        self.energy_every = int(energy_every)
         self.block_size = block_size
 
         # Attributes
@@ -196,6 +202,11 @@ class Electro:
         num_clipped = int(xp.sum(xp.astype(angles > max_displacement,
                                            xp.int64)))
         step_time = time.perf_counter() - start_time
+
+        if (self.energy_every > 0
+                and (self.iteration + 1) % self.energy_every == 0):
+            energy = physics.potential_energy(new_points, sphere_sizes, alphas,
+                                              block_size=self.block_size)
 
         self.points = new_points
         self.iteration += 1
