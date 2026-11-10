@@ -9,6 +9,7 @@ dependencies = [
     "marimo[recommended]>=0.24.0",
     "numpy>=2.5.2",
     "plotly>=7.0.0",
+    "pyyaml>=6.0.3",
 ]
 
 [build-system]
