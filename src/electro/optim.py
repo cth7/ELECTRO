@@ -110,6 +110,7 @@ class Electro:
             stage that has been reached.
         num_points: Number of points on the sphere.
         num_stages: Number of stages in the optimization.
+        points_dtype: Name of the data type of the points.
     """
 
     def __init__(self, initial_points, sphere_sizes, alphas, stepsizes,
@@ -165,6 +166,20 @@ class Electro:
     @property
     def num_stages(self):
         return len(self.sphere_sizes)
+
+    @property
+    def points_dtype(self):
+        # The array API standard does not define how a data type is printed
+        # (e.g. PyTorch prints "torch.float64"), so the name is found by
+        # comparing with the data types of the array namespace. Names the
+        # namespace does not have are skipped rather than compared with None,
+        # because NumPy treats None as float64. If nothing matches, the
+        # library's own name is used.
+        xp = array_namespace(self.points)
+        names = [name for name in ("float16", "bfloat16", "float32", "float64")
+                 if hasattr(xp, name)
+                 and self.points.dtype == getattr(xp, name)]
+        return names[0] if names else str(self.points.dtype)
 
     def step(self):
         """Performs one iteration of the current stage.
