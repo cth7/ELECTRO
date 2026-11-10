@@ -103,8 +103,8 @@ class Electro:
         stage: Index of the current stage (zero-based).
         iteration: Number of completed iterations.
         stage_iteration: Number of completed iterations in the current stage.
-        elapsed: Total seconds spent in iterations, excluding the time spent
-            evaluating the energy function and saving checkpoints.
+        elapsed_seconds: Total seconds spent in iterations, excluding the time
+            spent evaluating the energy function and saving.
         converged: True when the last stage met its tolerance.
         stage_starts: List of (iteration, elapsed) at the start of each
             stage that has been reached.
@@ -155,7 +155,7 @@ class Electro:
         self.stage = 0
         self.iteration = 0
         self.stage_iteration = 0
-        self.elapsed = 0.0
+        self.elapsed_seconds = 0.0
         self.converged = False
         self.stage_starts = [(0, 0.0)]
 
@@ -216,7 +216,7 @@ class Electro:
         largest = min(float(xp.max(angles)), max_displacement)
         num_clipped = int(xp.sum(xp.astype(angles > max_displacement,
                                            xp.int64)))
-        step_time = time.perf_counter() - start_time
+        step_seconds = time.perf_counter() - start_time
 
         if (self.energy_every > 0
                 and (self.iteration + 1) % self.energy_every == 0):
@@ -226,7 +226,7 @@ class Electro:
         self.points = new_points
         self.iteration += 1
         self.stage_iteration += 1
-        self.elapsed += step_time
+        self.elapsed_seconds += step_seconds
 
         if largest <= tolerance:
             if stage == self.num_stages - 1:
