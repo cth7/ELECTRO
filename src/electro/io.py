@@ -4,8 +4,8 @@ A save directory contains:
     params.yaml: The parameters, written once when the optimization is created.
     history.jsonl: One line of JSON per iteration with the values used and
         calculated in that iteration (see Electro.step).
-    points/iter_<iteration>.npy: The points after an iteration, saved every
-        points_every iterations. iter_00000000.npy holds the initial points.
+    points/iter_<iteration>.npy: The points after an iteration.
+        iter_00000000.npy holds the initial points.
 The paths are given by params_path, history_path and points_path.
 """
 

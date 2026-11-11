@@ -125,7 +125,7 @@ class Electro:
 
     def __init__(self, initial_points, sphere_sizes, alphas, stepsizes,
                  max_displacements, tolerances, save_dir=None, points_every=0,
-                 energy_every=0, block_size=1024):
+                 points_each_stage=False, energy_every=0, block_size=1024):
         """Initializes the optimizer.
 
         All arrays of parameters have one value per stage.
@@ -149,6 +149,9 @@ class Electro:
             points_every: Integer. Saves the points every points_every
                 iterations. 0 never saves them periodically. The points are
                 also saved when run returns or is interrupted.
+            points_each_stage: If True, also saves the points after the last
+                iteration of each stage, when the optimization advances to the
+                next stage or converges.
             energy_every: Integer. Evaluates the energy function every
                 energy_every iterations. 0 never evaluates it. Values not
                 evaluated are recorded as None. The energy is evaluated after
@@ -163,6 +166,7 @@ class Electro:
                                             dtype=np.float64)
         self.tolerances = np.asarray(tolerances, dtype=np.float64)
         self.points_every = int(points_every)
+        self.points_each_stage = bool(points_each_stage)
         self.energy_every = int(energy_every)
         self.block_size = block_size
 
@@ -289,8 +293,12 @@ class Electro:
         # last complete record, and points saved without a record are removed
         # on resume.
         if self.save_dir is not None:
-            if (self.points_every > 0
-                    and (self.iteration + 1) % self.points_every == 0):
+            is_periodic = (self.points_every > 0
+                           and (self.iteration + 1) % self.points_every == 0)
+            # The stage ends when _update_stage advances it or converges
+            is_stage_end = (self.points_each_stage
+                            and largest_displacement <= tolerance)
+            if is_periodic or is_stage_end:
                 io.save_points(new_points, self.save_dir, self.iteration + 1)
             self._write_record(record)
 
@@ -367,6 +375,7 @@ class Electro:
             "max_displacements": self.max_displacements,
             "tolerances": self.tolerances,
             "points_every": self.points_every,
+            "points_each_stage": self.points_each_stage,
             "energy_every": self.energy_every,
             "block_size": self.block_size,
         }
@@ -409,6 +418,7 @@ class Electro:
                   params["alphas"], params["stepsizes"],
                   params["max_displacements"], params["tolerances"],
                   points_every=params["points_every"],
+                  points_each_stage=params["points_each_stage"],
                   energy_every=params["energy_every"],
                   block_size=params["block_size"])
 
