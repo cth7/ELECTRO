@@ -232,7 +232,8 @@ class Electro:
                 largest_displacement: Largest angular displacement in radians
                     of any point, after clipping.
                 num_clipped: Number of points whose displacements were clipped.
-                step_seconds: Seconds spent in this iteration.
+                step_seconds: Seconds spent in this iteration on the core
+                    algorithm, excluding calculation of diagnostics and saving.
                 elapsed_seconds: Total seconds spent in iterations so far.
                 energy: Value of the energy function after this iteration
                     with the sphere sizes of this stage, or None if it was not
@@ -241,6 +242,7 @@ class Electro:
         if self.converged:
             raise RuntimeError("The optimization has already converged.")
 
+        start_time = time.perf_counter()
         xp = array_namespace(self.points)
         stage = self.stage
 
@@ -251,7 +253,6 @@ class Electro:
         max_displacement = float(self.max_displacements[stage])
         tolerance = float(self.tolerances[stage])
 
-        start_time = time.perf_counter()
         old_points = self.points
         forces = physics.net_force(old_points, sphere_sizes, alphas,
                                    block_size=self.block_size)
@@ -262,12 +263,13 @@ class Electro:
                                         max_displacement)
         # Clipped points moved exactly max_displacement, so the largest
         # displacement after clipping is known without recomputing angles.
-        # Converting to Python scalars also synchronizes GPU devices, so the
+        # Converting to a Python float also synchronizes GPU devices, so the
         # measured time includes all the queued work.
         largest_displacement = min(float(xp.max(angles)), max_displacement)
+        step_seconds = time.perf_counter() - start_time
+
         num_clipped = int(xp.sum(xp.astype(angles > max_displacement,
                                            xp.int64)))
-        step_seconds = time.perf_counter() - start_time
 
         energy = None
         if (self.energy_every > 0
