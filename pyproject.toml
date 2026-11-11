@@ -12,6 +12,11 @@ dependencies = [
     "pyyaml>=6.0.3",
 ]
 
+[project.optional-dependencies]
+torch = [
+    "torch>=2.14.1",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -24,6 +29,16 @@ dev = [
     "ruff>=0.16.5",
     "ty>=0.0.82",
 ]
+
+# PyTorch builds for CUDA 12.6 are the newest that still support Pascal GPUs
+# (e.g. GTX 1080 Ti). The index is explicit, so only torch is installed from it.
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
 
 [tool.ruff]
 line-length = 79
