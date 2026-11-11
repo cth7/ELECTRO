@@ -284,9 +284,14 @@ class Electro:
             "elapsed_seconds": self.elapsed_seconds + step_seconds,
             "energy": None if energy is None else float(energy),
         }
-        # The record is written before the state is updated. If writing is
-        # interrupted, the state still matches the last complete record.
+        # Saving is done before the state is updated, and the record is
+        # written last. If saving is interrupted, the state still matches the
+        # last complete record, and points saved without a record are removed
+        # on resume.
         if self.save_dir is not None:
+            if (self.points_every > 0
+                    and (self.iteration + 1) % self.points_every == 0):
+                io.save_points(new_points, self.save_dir, self.iteration + 1)
             self._write_record(record)
 
         self.points = new_points
@@ -294,10 +299,6 @@ class Electro:
         self.stage_iteration += 1
         self.elapsed_seconds += step_seconds
         self._update_stage(largest_displacement, tolerance)
-
-        if (self.save_dir is not None and self.points_every > 0
-                and self.iteration % self.points_every == 0):
-            io.save_points(self.points, self.save_dir, self.iteration)
 
         return record
 
