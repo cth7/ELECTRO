@@ -214,8 +214,7 @@ class Electro:
                 alphas: List of the weightings of the included sphere sizes.
                 stepsize: Step size.
                 max_displacement: Maximum angular displacement in radians that
-                    can be applied. Never larger than pi, which is the same as
-                    no clipping.
+                    a point can move, or None if clipping is disabled.
                 tolerance: Tolerance in radians for advancing past this stage.
                 largest_displacement: Largest angular displacement in radians
                     of any point, after clipping.
@@ -236,9 +235,7 @@ class Electro:
         sphere_sizes = self.sphere_sizes[:stage + 1]
         alphas = self.alphas[:stage + 1]
         stepsize = float(self.stepsizes[stage])
-        # JSON files cannot store infinity, so max_displacement is limited to
-        # pi, which is the same as no clipping.
-        max_displacement = min(float(self.max_displacements[stage]), math.pi)
+        max_displacement = float(self.max_displacements[stage])
         tolerance = float(self.tolerances[stage])
 
         start_time = time.perf_counter()
@@ -272,7 +269,9 @@ class Electro:
             "sphere_sizes": sphere_sizes.tolist(),
             "alphas": alphas.tolist(),
             "stepsize": stepsize,
-            "max_displacement": max_displacement,
+            # JSON cannot store infinity, so no clipping is recorded as None
+            "max_displacement": (None if math.isinf(max_displacement)
+                                 else max_displacement),
             "tolerance": tolerance,
             "largest_displacement": largest_displacement,
             "num_clipped": num_clipped,
