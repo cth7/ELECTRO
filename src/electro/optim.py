@@ -55,14 +55,17 @@ def clip_displacements(old_points, new_points, max_displacement):
         out: Array of points on the unit sphere with shape (num_points, 3).
     """
     xp = array_namespace(old_points, new_points)
-    # No angle is larger than pi, so this has no effect on the result. It keeps
-    # the value finite for math.cos and math.sin.
-    max_displacement = min(float(max_displacement), math.pi)
+    max_displacement = float(max_displacement)
+    # No angle is larger than pi, so no point can need clipping. This also
+    # keeps the value finite for math.cos and math.sin below.
+    if max_displacement >= math.pi:
+        return new_points
 
     angles = geometry.angular_distances(old_points, new_points)
     is_clipped = xp.expand_dims(angles > max_displacement, axis=1)
-
-    # TODO: Add early exit when no points need clipping
+    # Converting to a Python bool synchronizes GPU devices
+    if not bool(xp.any(is_clipped)):
+        return new_points
 
     # Calculate the unit vector at each old point that is tangent to the sphere
     # and points along the great circle toward the new point. Starting from the
@@ -77,8 +80,10 @@ def clip_displacements(old_points, new_points, max_displacement):
 
     clipped_points = (math.cos(max_displacement) * old_points
                       + math.sin(max_displacement) * tangents)
+    # The old points and tangents are orthogonal unit vectors, so
+    # cos^2 + sin^2 = 1 keeps the clipped points on the unit sphere, up to
+    # rounding errors
     out = xp.where(is_clipped, clipped_points, new_points)
-    # TODO: Considering projecting points back to sphere after clipping
     return out
 
 
