@@ -1,5 +1,6 @@
 import math
 import time
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -215,6 +216,9 @@ class Electro:
         Returns:
             record: Dictionary of the values used and calculated in this
                 iteration. This is also the record written to the history file.
+                timestamp: Local date and time when the record was created,
+                    as an ISO 8601 string with the UTC offset, e.g.
+                    "2026-06-23T14:03:27-04:00".
                 iteration: Number of completed iterations, including this one.
                 stage: Index of the stage of this iteration.
                 stage_iteration: Number of completed iterations in the stage,
@@ -272,6 +276,8 @@ class Electro:
                                               block_size=self.block_size)
 
         record = {
+            "timestamp": datetime.now().astimezone().isoformat(
+                timespec="seconds"),
             "iteration": self.iteration + 1,
             "stage": stage,
             "stage_iteration": self.stage_iteration + 1,
