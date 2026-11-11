@@ -41,7 +41,7 @@ def project_to_sphere(points):
     return out
 
 
-def clip_displacements(old_points, new_points, max_displacement):
+def clip_displacements(old_points, new_points, max_displacement, angles=None):
     """Clips the angle that each point moved, preserving the direction.
 
     Args:
@@ -51,6 +51,11 @@ def clip_displacements(old_points, new_points, max_displacement):
             be on the unit sphere.
         max_displacement: Float specifying the maximum angular displacement in
             radians. Use math.inf to disable clipping.
+        angles: Array with shape (num_points,) of the angular distances
+            between old_points and new_points in radians, as calculated by
+            geometry.angular_distances. If None, the angles will be calculated
+            in this function. Passing the angles is purely for efficiency when
+            they have already been computed externally.
 
     Returns:
         out: Array of points on the unit sphere with shape (num_points, 3).
@@ -62,7 +67,8 @@ def clip_displacements(old_points, new_points, max_displacement):
     if max_displacement >= math.pi:
         return new_points
 
-    angles = geometry.angular_distances(old_points, new_points)
+    if angles is None:
+        angles = geometry.angular_distances(old_points, new_points)
     is_clipped = xp.expand_dims(angles > max_displacement, axis=1)
     # Converting to a Python bool synchronizes GPU devices
     if not bool(xp.any(is_clipped)):
@@ -260,7 +266,7 @@ class Electro:
         new_points = project_to_sphere(new_points)
         angles = geometry.angular_distances(old_points, new_points)
         new_points = clip_displacements(old_points, new_points,
-                                        max_displacement)
+                                        max_displacement, angles=angles)
         # Clipped points moved exactly max_displacement, so the largest
         # displacement after clipping is known without recomputing angles.
         # Converting to a Python float also synchronizes GPU devices, so the
