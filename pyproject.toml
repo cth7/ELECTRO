@@ -45,3 +45,6 @@ line-length = 79
 
 [tool.ruff.lint.per-file-ignores]
 "**/*.py" = ["EXE002"]
+# marimo cells end with a bare return and show their output with a bare
+# expression
+"notebooks/*.py" = ["B018", "PLR1711"]
