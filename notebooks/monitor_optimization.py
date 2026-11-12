@@ -165,7 +165,8 @@ def _(
                     label="Largest displacement",
                     caption=displacement_caption,
                     bordered=True),
-            mo.stat(f"{recent_mean:.{decimals}f} ± {recent_std:.{decimals}f} s",
+            mo.stat(f"{recent_mean:.{decimals}f} ± "
+                    f"{recent_std:.{decimals}f} s",
                     label="Average seconds per iteration",
                     caption=f"Last {len(recent_seconds)} iterations",
                     bordered=True),
@@ -347,7 +348,8 @@ def _(ele, marker_size, mo, num_stages, points_slider, records, save_dir):
         points_title = "Initial points"
     else:
         _stage = records[points_iteration - 1]["stage"]
-        points_title = f"Iteration {points_iteration} (stage {_stage + 1}/{num_stages})"
+        points_title = (f"Iteration {points_iteration} "
+                        f"(stage {_stage + 1}/{num_stages})")
 
     points = ele.io.load_points(save_dir, points_iteration)
     fig_points = ele.plot.points_on_sphere(
