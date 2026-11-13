@@ -15,9 +15,10 @@ def pair_weights(i, j, sphere_sizes, alphas, num_points, dtype=None):
         j: Integer array of point indices (zero-based). Must be
             broadcastable with i. Pairs are symmetric, so i can be greater
             than j. Pairs where i equals j are not meaningful.
-        sphere_sizes: Array of the sphere sizes included in the optimization.
-        alphas: Array of weightings of the forces/energies of each sphere size.
-            Array has the same length as sphere_sizes.
+        sphere_sizes: NumPy array of the sphere sizes included in the
+            optimization.
+        alphas: NumPy array of weightings of the forces/energies of each
+            sphere size. Array has the same length as sphere_sizes.
         num_points: Integer specifying the total number of points in the
             optimization.
         dtype: Floating-point data type of the output. Uses float64 if None.
@@ -76,9 +77,10 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
     Args:
         points: Array with shape (num_points, 3). Points are expected to be on
             the unit sphere.
-        sphere_sizes: Array of the sphere sizes included in the optimization.
-        alphas: Array of weightings of the forces/energies of each sphere size.
-            Array has the same length as sphere_sizes.
+        sphere_sizes: NumPy array of the sphere sizes included in the
+            optimization.
+        alphas: NumPy array of weightings of the forces/energies of each
+            sphere size. Array has the same length as sphere_sizes.
         block_size: Integer specifying the number of points in each block.
 
     Returns:
@@ -144,9 +146,10 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
     Args:
         points: Array with shape (num_points, 3). Points are expected to be on
             the unit sphere.
-        sphere_sizes: Array of the sphere sizes included in the optimization.
-        alphas: Array of weightings of the forces/energies of each sphere size.
-            Array has the same length as sphere_sizes.
+        sphere_sizes: NumPy array of the sphere sizes included in the
+            optimization.
+        alphas: NumPy array of weightings of the forces/energies of each
+            sphere size. Array has the same length as sphere_sizes.
         block_size: Integer specifying the number of points in each block.
 
     Returns:

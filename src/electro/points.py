@@ -1,4 +1,7 @@
+import math
+
 import numpy as np
+from array_api_compat import array_namespace
 
 
 def square(point, num_points, offset=0, n0=0, dtype=np.float64):
@@ -37,12 +40,13 @@ def square_to_sphere(points, half_sphere=False):
         out: Array with shape (num_points, 3) corresponding to (x, y, z)
             coordinates.
     """
+    xp = array_namespace(points)
     z = 1 - points[:, 0] if half_sphere else 1 - 2 * points[:, 0]
     r = (1 - z ** 2) ** 0.5
-    azimuthal_angle = 2 * np.pi * points[:, 1]
-    x = r * np.cos(azimuthal_angle)
-    y = r * np.sin(azimuthal_angle)
-    out = np.stack([x, y, z], axis=1)
+    azimuthal_angle = 2 * math.pi * points[:, 1]
+    x = r * xp.cos(azimuthal_angle)
+    y = r * xp.sin(azimuthal_angle)
+    out = xp.stack([x, y, z], axis=1)
     return out
 
 
