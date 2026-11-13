@@ -77,14 +77,14 @@ def _(ele, mo, np, refresh, save_dir):
     mo.stop(not records, mo.md("No iterations recorded yet."))
 
     def column(key):
-        # Converting to float turns None (no clipping, energy not evaluated)
-        # into NaN. Records from before a field was added are also NaN.
+        # Converting to float turns None (no clipping) into NaN. Records from
+        # before a field was added are also NaN.
         return np.array([record.get(key) for record in records], dtype=float)
 
     history = {key: column(key) for key in [
         "iteration", "stage", "stage_iteration", "max_displacement",
         "tolerance", "largest_displacement", "num_clipped", "step_seconds",
-        "elapsed_seconds", "energy",
+        "elapsed_seconds",
     ]}
     last = records[-1]
     return history, last, records
@@ -131,7 +131,7 @@ def _(
     # standard deviation
     decimals = max(0, 2 - math.floor(math.log10(recent_mean)))
 
-    # Wall-clock time includes the energy, saving and any time between
+    # Wall-clock time includes diagnostics, saving and any time between
     # resumes, while elapsed_seconds only includes the algorithm
     timestamps = [record["timestamp"] for record in records
                   if "timestamp" in record]
@@ -184,18 +184,17 @@ def _(
 
 
 @app.cell
-def _(go, history, make_subplots, np):
+def _(go, history, make_subplots):
     # History plots, sharing the iteration axis. Dotted vertical lines mark
     # the first iteration of each stage.
     iterations = history["iteration"]
 
     fig_history = make_subplots(
-        rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.06,
+        rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.06,
         subplot_titles=[
             "Largest displacement (radians)",
             "Number of clipped points",
             "Seconds per iteration",
-            "Energy (sphere sizes of each stage)",
         ],
     )
 
@@ -228,24 +227,17 @@ def _(go, history, make_subplots, np):
         name="Seconds per iteration", line={"color": "#2ca02c"},
     ), row=3, col=1)
 
-    is_evaluated = np.isfinite(history["energy"])
-    fig_history.add_trace(go.Scattergl(
-        x=iterations[is_evaluated], y=history["energy"][is_evaluated],
-        mode="markers", name="Energy", marker={"color": "#9467bd", "size": 4},
-    ), row=4, col=1)
-
     stage_starts = iterations[history["stage_iteration"] == 1]
     for stage_start in stage_starts[1:]:
         fig_history.add_vline(x=stage_start, line={"color": "lightgray",
                                                    "dash": "dot", "width": 1})
 
     fig_history.update_yaxes(type="log", row=1, col=1)
-    fig_history.update_yaxes(type="log", row=4, col=1)
 
-    fig_history.update_xaxes(title_text="Iteration", row=4, col=1)
+    fig_history.update_xaxes(title_text="Iteration", row=3, col=1)
 
     fig_history.update_layout(
-        height=900, hovermode="x unified", plot_bgcolor="white",
+        height=700, hovermode="x unified", plot_bgcolor="white",
         legend={"orientation": "h", "y": 1.06}, margin={"t": 80},
         # Keeps the zoom when the figure is redrawn on refresh
         uirevision="history",

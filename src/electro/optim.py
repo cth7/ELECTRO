@@ -122,7 +122,7 @@ class Electro:
         stage: Index of the current stage (zero-based).
         stage_iteration: Number of completed iterations in the current stage.
         elapsed_seconds: Total seconds spent in iterations, excluding the time
-            spent evaluating the energy function and saving.
+            spent calculating diagnostics and saving.
         converged: True when the last stage met its tolerance.
         save_dir: Path of the save directory, or None if not saving.
         num_points: Number of points on the sphere.
@@ -132,8 +132,7 @@ class Electro:
 
     def __init__(self, initial_points, sphere_sizes, alphas, stepsizes,
                  max_displacements, tolerances, save_dir=None, points_every=0,
-                 points_each_stage=False, energy_every=0,
-                 energy_each_stage=False, block_size=1024):
+                 points_each_stage=False, block_size=1024):
         """Initializes the optimizer.
 
         All arrays of parameters have one value per stage.
@@ -160,14 +159,7 @@ class Electro:
             points_each_stage: If True, also saves the points after the last
                 iteration of each stage, when the optimization advances to the
                 next stage or converges.
-            energy_every: Integer. Evaluates the energy function every
-                energy_every iterations. 0 never evaluates it. Values not
-                evaluated are recorded as None. The energy is evaluated after
-                the points are updated.
-            energy_each_stage: If True, also evaluates the energy function
-                after the last iteration of each stage, when the optimization
-                advances to the next stage or converges.
-            block_size: Integer passed to the force and energy functions.
+            block_size: Integer passed to the force function.
                 Computations are done in blocks of this size.
         """
         self.sphere_sizes = np.asarray(sphere_sizes, dtype=np.int64)
@@ -178,8 +170,6 @@ class Electro:
         self.tolerances = np.asarray(tolerances, dtype=np.float64)
         self.points_every = int(points_every)
         self.points_each_stage = bool(points_each_stage)
-        self.energy_every = int(energy_every)
-        self.energy_each_stage = bool(energy_each_stage)
         self.block_size = block_size
 
         # Attributes
@@ -246,9 +236,6 @@ class Electro:
                 step_seconds: Seconds spent in this iteration on the core
                     algorithm, excluding calculation of diagnostics and saving.
                 elapsed_seconds: Total seconds spent in iterations so far.
-                energy: Value of the energy function after this iteration
-                    with the sphere sizes of this stage, or None if it was not
-                    evaluated.
         """
         if self.converged:
             raise RuntimeError("The optimization has already converged.")
@@ -282,17 +269,6 @@ class Electro:
         num_clipped = int(xp.sum(xp.astype(angles > max_displacement,
                                            xp.int64)))
 
-        # The stage ends when _update_stage advances it or converges
-        is_stage_end = largest_displacement <= tolerance
-
-        energy = None
-        is_energy_periodic = (
-            self.energy_every > 0
-            and (self.iteration + 1) % self.energy_every == 0)
-        if is_energy_periodic or (self.energy_each_stage and is_stage_end):
-            energy = physics.potential_energy(new_points, sphere_sizes, alphas,
-                                              block_size=self.block_size)
-
         record = {
             "timestamp": datetime.now().astimezone().isoformat(
                 timespec="seconds"),
@@ -310,7 +286,6 @@ class Electro:
             "num_clipped": num_clipped,
             "step_seconds": step_seconds,
             "elapsed_seconds": self.elapsed_seconds + step_seconds,
-            "energy": None if energy is None else float(energy),
         }
         # Saving is done before the state is updated, and the record is
         # written last. If saving is interrupted, the state still matches the
@@ -320,6 +295,8 @@ class Electro:
             is_points_periodic = (
                 self.points_every > 0
                 and (self.iteration + 1) % self.points_every == 0)
+            # Same check as _update_stage
+            is_stage_end = largest_displacement <= tolerance
             if is_points_periodic or (self.points_each_stage and is_stage_end):
                 io.save_points(new_points, self.save_dir, self.iteration + 1)
             self._write_record(record)
@@ -398,8 +375,6 @@ class Electro:
             "tolerances": self.tolerances,
             "points_every": self.points_every,
             "points_each_stage": self.points_each_stage,
-            "energy_every": self.energy_every,
-            "energy_each_stage": self.energy_each_stage,
             "block_size": self.block_size,
         }
         io.save_params(params, self.save_dir)
@@ -442,8 +417,6 @@ class Electro:
                   params["max_displacements"], params["tolerances"],
                   points_every=params["points_every"],
                   points_each_stage=params["points_each_stage"],
-                  energy_every=params["energy_every"],
-                  energy_each_stage=params["energy_each_stage"],
                   block_size=params["block_size"])
 
         # Restore the state after the iteration from its record. The record
