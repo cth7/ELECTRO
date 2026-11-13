@@ -72,6 +72,6 @@ def angular_distances(points_a, points_b):
     xp = array_namespace(points_a, points_b)
     diff = points_a - points_b
     total = points_a + points_b
-    out = 2 * xp.atan2(xp.sqrt(xp.sum(diff * diff, axis=-1)),
-                       xp.sqrt(xp.sum(total * total, axis=-1)))
+    out = 2 * xp.atan2(xp.linalg.vector_norm(diff, axis=-1),
+                       xp.linalg.vector_norm(total, axis=-1))
     return out

@@ -113,7 +113,7 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
         # Using xp.take instead of points[i] and points[j] to conform with the
         # array API standard
         diff = xp.take(points, i, axis=0) - xp.take(points, j, axis=0)
-        distances = xp.sqrt(xp.sum(diff * diff, axis=1))
+        distances = xp.linalg.vector_norm(diff, axis=1)
         total_energy += float(xp.sum(weights / distances))
 
     return total_energy

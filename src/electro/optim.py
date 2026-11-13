@@ -37,7 +37,7 @@ def project_to_sphere(points):
         out: Array of points on the unit sphere with shape (num_points, 3).
     """
     xp = array_namespace(points)
-    out = points / xp.sqrt(xp.sum(points * points, axis=1, keepdims=True))
+    out = points / xp.linalg.vector_norm(points, axis=1, keepdims=True)
     return out
 
 
@@ -80,7 +80,7 @@ def clip_displacements(old_points, new_points, max_displacement, angles=None):
     diff = new_points - old_points
     radial = xp.sum(diff * old_points, axis=1, keepdims=True)
     tangents = diff - radial * old_points
-    norms = xp.sqrt(xp.sum(tangents * tangents, axis=1, keepdims=True))
+    norms = xp.linalg.vector_norm(tangents, axis=1, keepdims=True)
     # A point that did not move has no tangent vector. Avoid dividing by 0.
     norms = xp.where(is_clipped, norms, xp.ones_like(norms))
     tangents = tangents / norms

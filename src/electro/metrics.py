@@ -91,7 +91,7 @@ def crr(points, block_size=256):
     nearest = nearest_neighbors(points, indices, block_size)
     # Calculate the distance to the nearest neighbor
     diff = points - xp.take(points, nearest, axis=0)
-    min_d = xp.sqrt(xp.sum(diff * diff, axis=1))
+    min_d = xp.linalg.vector_norm(diff, axis=1)
 
     # Then calculate the normalizing factor. This is the expected value of the
     # nearest neighbor distance for randomly distributed points.
