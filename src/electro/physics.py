@@ -99,10 +99,13 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
         # including last_j
         last_j = min(stop + max_size - 1, num_points)
 
-        # Calculate the indices of the pairs of points in this block
-        i, j = xp.meshgrid(xp.arange(start, stop, device=device),
-                           xp.arange(start, last_j, device=device),
-                           indexing="ij")
+        # Calculate the indices of the pairs of points in this block. int32
+        # is faster than int64 on GPUs, which emulate 64-bit integer math.
+        # Its range of about 2.1 billion is far more than the number of points.
+        i, j = xp.meshgrid(
+            xp.arange(start, stop, dtype=xp.int32, device=device),
+            xp.arange(start, last_j, dtype=xp.int32, device=device),
+            indexing="ij")
         # Keep each pair once by discarding the lower left triangle, and only
         # keep the pairs that can fit in the largest sphere
         keep = (i < j) & (j - i + 1 <= max_size)
@@ -169,10 +172,13 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
         first_j = max(start - max_size + 1, 0)
         last_j = min(stop + max_size - 1, num_points)
 
-        # Calculate the indices of the pairs of points in this block
-        i, j = xp.meshgrid(xp.arange(start, stop, device=device),
-                           xp.arange(first_j, last_j, device=device),
-                           indexing="ij")
+        # Calculate the indices of the pairs of points in this block. int32
+        # is faster than int64 on GPUs, which emulate 64-bit integer math.
+        # Its range of about 2.1 billion is far more than the number of points.
+        i, j = xp.meshgrid(
+            xp.arange(start, stop, dtype=xp.int32, device=device),
+            xp.arange(first_j, last_j, dtype=xp.int32, device=device),
+            indexing="ij")
         # i and j are 2D arrays with shape (num_rows, num_columns)
 
         weights = pair_weights(i, j, sphere_sizes, alphas, num_points,
