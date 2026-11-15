@@ -3,25 +3,42 @@ import numpy as np
 from array_api_compat import array_namespace
 
 
-def weight_table(sphere_sizes, alphas, num_points):
-    """Calculates the table used by pair_weights to look up the weights.
+def counts_table(sphere_sizes, alphas, num_points):
+    """Calculates the table used by pair_weights to calculate the weights.
 
-    A sphere of size m is a set of m consecutive points. A sphere that starts
-    at index s contains points s to s + m - 1, and s is between 0 and
-    num_points - m. For a pair of points with indices first < last, the
-    spheres of size m that contain both points start at
-    s = max(last - m + 1, 0), ..., min(first, num_points - m). With the gap
-    d = last - first, the number of these spheres is the sum of three terms
-    of the form max(0, m - c):
-    1) max(0, m - d) spheres, ignoring the ends of the sequence
-    2) minus max(0, m - (last + 1)) spheres that would start before the
-       first point
-    3) minus max(0, m - (num_points - first)) spheres that would end after
-       the last point
-    Multiplying by alpha_m and summing over all sphere sizes gives the same
-    function for each term,
-    T(c) = sum over m of alpha_m * max(0, m - c),
-    so the pair weight is T(d) - T(last + 1) - T(num_points - first).
+    A sphere of size m is a set of m consecutive points. Points are indexed by
+    the zero-based indices. A sphere that starts at index s contains points
+    s to s + m - 1, and s must be between 0 and num_points - m. For a pair of
+    points with indices i and j where i < j, the spheres of size m that contain
+    both points have starting indices s from max(j - m + 1, 0) to
+    min(i, num_points - m). The number of these spheres is the sum of three
+    types of counts:
+    1)  A count of the number of spheres ignoring the ends of the sequence,
+        max(0, m - (j - i)).
+    2)  Minus a count of the number of spheres that would start before the
+        first point in the sequence, max(0, m - (j + 1)).
+    3)  Minus a count of the number of spheres that would end after the last
+        point in the sequence, max(0, m - (num_points - i)).
+    These three counts all have the form max(0, m - x). The value of x is
+    generally different for each of the three types of counts, and depends on
+    the variables i, j and num_points. Given a pair of points i and j from a
+    set of num_points, for a type of count the value of x remains the same when
+    performing the count for different sphere sizes. When calculating the
+    weight for a pair of points, typically these three counts are first summed,
+    and then multiplied by alpha, and then repeated and summed for each sphere
+    size. However, using the linearity of this calculation, alpha can be
+    distributed to each of the three counts first, then the summation over
+    sphere sizes can be performed separately for each of the three types of
+    counts, and finally the resulting three terms can be summed to calculate
+    the weight. The reason for performing the sphere size summation for each
+    type of count separately is that it can be pre-calculated, stored in a
+    table, and then looked up by the value of x (recall that the value of x is
+    the same throughout each type of count). The value of x is an integer from
+    0 to num_points.
+
+    For a given set of sphere sizes, alphas, and the number of points, the
+    table holds the value T(x) = sum over m of alpha_m * max(0, m - x). The
+    pair weight is then calculated by T(j - i) - T(j + 1) - T(num_points - i).
 
     Args:
         sphere_sizes: NumPy array of the sphere sizes included in the
@@ -32,32 +49,31 @@ def weight_table(sphere_sizes, alphas, num_points):
             optimization.
 
     Returns:
-        out: NumPy float64 array with shape (num_points + 1,). out[c] is T(c).
+        table: NumPy float64 array with shape (num_points + 1,).
     """
-    c = np.arange(num_points + 1)
-    out = np.zeros(num_points + 1)
+    x = np.arange(num_points + 1)
+    table = np.zeros(num_points + 1)
     for m, alpha in zip(sphere_sizes.tolist(), alphas.tolist(), strict=True):
-        out += alpha * np.maximum(m - c, 0)
-    return out
+        table += alpha * np.maximum(0, m - x)
+    return table
 
 
-def pair_weights(i, j, table, num_points):
-    """Looks up the weights for the forces/energies between pairs of points.
+def pair_weights(i, j, num_points, table):
+    """Calculates the weights for the forces/energies between pairs of points.
 
     The weight of a pair of points is the sum over all sphere sizes m of
     alpha_m multiplied by the number of spheres of size m that contain both
-    points. A sphere of size m is a set of m consecutive points, so a pair of
-    points is only contained in spheres of size m when abs(i - j) + 1 <= m.
+    points.
 
     Args:
         i: Integer array of point indices (zero-based).
         j: Integer array of point indices (zero-based). Must be
             broadcastable with i. Pairs are symmetric, so i can be greater
             than j. Pairs where i equals j are not meaningful.
-        table: Array with shape (num_points + 1,) calculated by weight_table.
-            Must have the array namespace and device of i and j.
         num_points: Integer specifying the total number of points in the
             optimization.
+        table: Array with shape (num_points + 1,) calculated by counts_table.
+            Must have the array namespace and device of i and j.
 
     Returns:
         out: Array of weights with the shape of i and j broadcast together,
@@ -65,17 +81,17 @@ def pair_weights(i, j, table, num_points):
     """
     xp = array_namespace(i, j, table)
 
-    # Orders the indices so that first <= last
-    first = xp.minimum(i, j)
-    last = xp.maximum(i, j)
+    # Orders the indices so that i <= j
+    i, j = xp.minimum(i, j), xp.maximum(i, j)
 
-    def lookup(c):
+    def lookup(x):
         # take only accepts 1D indices in the array API standard
-        return xp.reshape(xp.take(table, xp.reshape(c, (-1,))), c.shape)
+        shape = x.shape
+        x = xp.reshape(x, (-1,))
+        t = xp.take(table, x)
+        return xp.reshape(t, shape)
 
-    out = (lookup(last - first) - lookup(last + 1)
-           - lookup(num_points - first))
-    return out
+    return lookup(j - i) - lookup(j + 1) - lookup(num_points - i)
 
 
 def potential_energy(points, sphere_sizes, alphas, block_size=1024):
@@ -113,22 +129,25 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
     device = array_api_compat.device(points)
     num_points = points.shape[0]
     max_size = int(sphere_sizes.max())
-    table = xp.asarray(weight_table(sphere_sizes, alphas, num_points),
-                       dtype=points.dtype, device=device)
+    table = counts_table(sphere_sizes, alphas, num_points)
+    table = xp.asarray(table, dtype=points.dtype, device=device)
 
     total_energy = 0.0
-    for start in range(0, num_points, block_size):
-        stop = min(start + block_size, num_points)
+    for first_i in range(0, num_points, block_size):
+        # This index last_i is used to calculate the end of the block, which
+        # has points up to but not including last_i
+        last_i = min(first_i + block_size, num_points)
+        first_j = first_i
         # The last point in the block can only pair with points up to but not
         # including last_j
-        last_j = min(stop + max_size - 1, num_points)
+        last_j = min(last_i + max_size - 1, num_points)
 
         # Calculate the indices of the pairs of points in this block. int32
         # is faster than int64 on GPUs, which emulate 64-bit integer math.
         # Its range of about 2.1 billion is far more than the number of points.
         i, j = xp.meshgrid(
-            xp.arange(start, stop, dtype=xp.int32, device=device),
-            xp.arange(start, last_j, dtype=xp.int32, device=device),
+            xp.arange(first_i, last_i, dtype=xp.int32, device=device),
+            xp.arange(first_j, last_j, dtype=xp.int32, device=device),
             indexing="ij")
         # Keep each pair once by discarding the lower left triangle, and only
         # keep the pairs that can fit in the largest sphere
@@ -137,7 +156,7 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
         j = j[keep]
         # i and j are now 1D arrays of the same length
 
-        weights = pair_weights(i, j, table, num_points)
+        weights = pair_weights(i, j, num_points, table)
         # Using xp.take instead of points[i] and points[j] to conform with the
         # array API standard
         diff = xp.take(points, i, axis=0) - xp.take(points, j, axis=0)
@@ -185,40 +204,41 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
     device = array_api_compat.device(points)
     num_points = points.shape[0]
     max_size = int(sphere_sizes.max())
-    table = xp.asarray(weight_table(sphere_sizes, alphas, num_points),
-                       dtype=points.dtype, device=device)
+    table = counts_table(sphere_sizes, alphas, num_points)
+    table = xp.asarray(table, dtype=points.dtype, device=device)
 
     net_forces = []
-    for start in range(0, num_points, block_size):
-        stop = min(start + block_size, num_points)
+    for first_i in range(0, num_points, block_size):
+        # This index last_i is used to calculate the end of the block, which
+        # has points up to but not including last_i
+        last_i = min(first_i + block_size, num_points)
         # The first point in the block can only pair with points starting at
         # first_j, and the last point in the block can only pair with points
         # up to but not including last_j
-        first_j = max(start - max_size + 1, 0)
-        last_j = min(stop + max_size - 1, num_points)
+        first_j = max(first_i - max_size + 1, 0)
+        last_j = min(last_i + max_size - 1, num_points)
 
         # Calculate the indices of the pairs of points in this block. int32
         # is faster than int64 on GPUs, which emulate 64-bit integer math.
         # Its range of about 2.1 billion is far more than the number of points.
         i, j = xp.meshgrid(
-            xp.arange(start, stop, dtype=xp.int32, device=device),
+            xp.arange(first_i, last_i, dtype=xp.int32, device=device),
             xp.arange(first_j, last_j, dtype=xp.int32, device=device),
             indexing="ij")
         # i and j are 2D arrays with shape (num_rows, num_columns)
 
-        weights = pair_weights(i, j, table, num_points)
+        weights = pair_weights(i, j, num_points, table)
         # A point exerts no force on itself
         is_pair = i != j
-        weights = xp.where(is_pair, weights, xp.zeros_like(weights))
+        weights = xp.where(is_pair, weights, 0)
 
         # Insert axes so that each row broadcasts against each column
-        diff = (xp.expand_dims(points[start:stop, :], axis=1)
+        diff = (xp.expand_dims(points[first_i:last_i, :], axis=1)
                 - xp.expand_dims(points[first_j:last_j, :], axis=0))
         distances_sq = xp.sum(diff * diff, axis=2)
         # The distance from a point to itself is 0. Its weight is 0, so any
         # non-zero distance avoids dividing by 0 without changing the result.
-        distances_sq = xp.where(is_pair, distances_sq,
-                                xp.ones_like(distances_sq))
+        distances_sq = xp.where(is_pair, distances_sq, 1)
 
         scale = weights / (distances_sq * xp.sqrt(distances_sq))
         net_forces.append(xp.sum(xp.expand_dims(scale, axis=2) * diff, axis=1))
