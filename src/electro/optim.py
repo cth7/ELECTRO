@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import array_api_compat
 import numpy as np
 from array_api_compat import array_namespace
 
@@ -180,6 +181,10 @@ class Electro:
         self.elapsed_seconds = 0.0
         self.converged = False
 
+        # Table of counts for the forces, and the stage it was calculated for
+        self._table = None
+        self._table_stage = None
+
         # Saving
         self.save_dir = None
         self._history_file = None
@@ -251,8 +256,19 @@ class Electro:
         max_displacement = float(self.max_displacements[stage])
         tolerance = float(self.tolerances[stage])
 
+        # The table only changes with the stage. Checking the stage it was
+        # calculated for also covers resuming.
+        if self._table_stage != stage:
+            table = physics.counts_table(sphere_sizes, alphas, self.num_points)
+            self._table = xp.asarray(
+                table,
+                dtype=self.points.dtype,
+                device=array_api_compat.device(self.points))
+            self._table_stage = stage
+
         old_points = self.points
         forces = physics.net_force(old_points, sphere_sizes, alphas,
+                                   table=self._table,
                                    block_size=self.block_size)
         new_points = apply_forces(old_points, forces, stepsize)
         new_points = project_to_sphere(new_points)
