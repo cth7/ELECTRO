@@ -1,9 +1,48 @@
 import array_api_compat
+import numpy as np
 from array_api_compat import array_namespace
 
 
-def pair_weights(i, j, sphere_sizes, alphas, num_points, dtype=None):
-    """Calculates the weights for the forces/energies between pairs of points.
+def weight_table(sphere_sizes, alphas, num_points):
+    """Calculates the table used by pair_weights to look up the weights.
+
+    A sphere of size m is a set of m consecutive points. A sphere that starts
+    at index s contains points s to s + m - 1, and s is between 0 and
+    num_points - m. For a pair of points with indices first < last, the
+    spheres of size m that contain both points start at
+    s = max(last - m + 1, 0), ..., min(first, num_points - m). With the gap
+    d = last - first, the number of these spheres is the sum of three terms
+    of the form max(0, m - c):
+    1) max(0, m - d) spheres, ignoring the ends of the sequence
+    2) minus max(0, m - (last + 1)) spheres that would start before the
+       first point
+    3) minus max(0, m - (num_points - first)) spheres that would end after
+       the last point
+    Multiplying by alpha_m and summing over all sphere sizes gives the same
+    function for each term,
+    T(c) = sum over m of alpha_m * max(0, m - c),
+    so the pair weight is T(d) - T(last + 1) - T(num_points - first).
+
+    Args:
+        sphere_sizes: NumPy array of the sphere sizes included in the
+            optimization.
+        alphas: NumPy array of weightings of the forces/energies of each
+            sphere size. Array has the same length as sphere_sizes.
+        num_points: Integer specifying the total number of points in the
+            optimization.
+
+    Returns:
+        out: NumPy float64 array with shape (num_points + 1,). out[c] is T(c).
+    """
+    c = np.arange(num_points + 1)
+    out = np.zeros(num_points + 1)
+    for m, alpha in zip(sphere_sizes.tolist(), alphas.tolist(), strict=True):
+        out += alpha * np.maximum(m - c, 0)
+    return out
+
+
+def pair_weights(i, j, table, num_points):
+    """Looks up the weights for the forces/energies between pairs of points.
 
     The weight of a pair of points is the sum over all sphere sizes m of
     alpha_m multiplied by the number of spheres of size m that contain both
@@ -15,44 +54,27 @@ def pair_weights(i, j, sphere_sizes, alphas, num_points, dtype=None):
         j: Integer array of point indices (zero-based). Must be
             broadcastable with i. Pairs are symmetric, so i can be greater
             than j. Pairs where i equals j are not meaningful.
-        sphere_sizes: NumPy array of the sphere sizes included in the
-            optimization.
-        alphas: NumPy array of weightings of the forces/energies of each
-            sphere size. Array has the same length as sphere_sizes.
+        table: Array with shape (num_points + 1,) calculated by weight_table.
+            Must have the array namespace and device of i and j.
         num_points: Integer specifying the total number of points in the
             optimization.
-        dtype: Floating-point data type of the output. Uses float64 if None.
 
     Returns:
-        out: Array of weights with the shape of i and j broadcast together.
+        out: Array of weights with the shape of i and j broadcast together,
+            and the data type of table.
     """
-    xp = array_namespace(i, j)
-    device = array_api_compat.device(i)
-    if dtype is None:
-        dtype = xp.float64
+    xp = array_namespace(i, j, table)
 
     # Orders the indices so that first <= last
     first = xp.minimum(i, j)
     last = xp.maximum(i, j)
 
-    out = xp.zeros(first.shape, dtype=dtype, device=device)
-    # Convert to Python ints and floats to avoid conflict between different
-    # types of arrays.
-    sphere_sizes = sphere_sizes.tolist()
-    alphas = alphas.tolist()
-    for m, alpha in zip(sphere_sizes, alphas, strict=True):
-        # A sphere that starts at index s contains points s to s + m - 1.
-        # So to contain both points, s must satisfy:
-        # 1) s <= first
-        # 2) s >= last - m + 1
-        # Also s must be between 0 and num_points - m.
-        s_max = xp.clip(first, max=num_points - m)
-        s_min = xp.clip(last - m + 1, min=0)
-        # The following can be negative when the points are too far apart to
-        # fit in a sphere of size m, so clip minimum to zero.
-        num_spheres = xp.clip(s_max - s_min + 1, min=0)
-        out += alpha * xp.astype(num_spheres, dtype)
+    def lookup(c):
+        # take only accepts 1D indices in the array API standard
+        return xp.reshape(xp.take(table, xp.reshape(c, (-1,))), c.shape)
 
+    out = (lookup(last - first) - lookup(last + 1)
+           - lookup(num_points - first))
     return out
 
 
@@ -91,6 +113,8 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
     device = array_api_compat.device(points)
     num_points = points.shape[0]
     max_size = int(sphere_sizes.max())
+    table = xp.asarray(weight_table(sphere_sizes, alphas, num_points),
+                       dtype=points.dtype, device=device)
 
     total_energy = 0.0
     for start in range(0, num_points, block_size):
@@ -113,8 +137,7 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
         j = j[keep]
         # i and j are now 1D arrays of the same length
 
-        weights = pair_weights(i, j, sphere_sizes, alphas, num_points,
-                               dtype=points.dtype)
+        weights = pair_weights(i, j, table, num_points)
         # Using xp.take instead of points[i] and points[j] to conform with the
         # array API standard
         diff = xp.take(points, i, axis=0) - xp.take(points, j, axis=0)
@@ -162,6 +185,8 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
     device = array_api_compat.device(points)
     num_points = points.shape[0]
     max_size = int(sphere_sizes.max())
+    table = xp.asarray(weight_table(sphere_sizes, alphas, num_points),
+                       dtype=points.dtype, device=device)
 
     net_forces = []
     for start in range(0, num_points, block_size):
@@ -181,8 +206,7 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
             indexing="ij")
         # i and j are 2D arrays with shape (num_rows, num_columns)
 
-        weights = pair_weights(i, j, sphere_sizes, alphas, num_points,
-                               dtype=points.dtype)
+        weights = pair_weights(i, j, table, num_points)
         # A point exerts no force on itself
         is_pair = i != j
         weights = xp.where(is_pair, weights, xp.zeros_like(weights))
