@@ -94,7 +94,8 @@ def pair_weights(i, j, num_points, table):
     return lookup(j - i) - lookup(j + 1) - lookup(num_points - i)
 
 
-def potential_energy(points, sphere_sizes, alphas, block_size=1024):
+def potential_energy(points, sphere_sizes, alphas, table=None,
+                     block_size=1024):
     """Calculates the objective function G(S) for a set of points.
 
     This is the sum over all pairs of points of the pair weight divided by the
@@ -119,6 +120,9 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
             optimization.
         alphas: NumPy array of weightings of the forces/energies of each
             sphere size. Array has the same length as sphere_sizes.
+        table: Array calculated by counts_table from sphere_sizes, alphas and
+            num_points, with the array namespace, device and data type of
+            points. Calculated in this function if None.
         block_size: Integer specifying the number of points in each block.
 
     Returns:
@@ -129,8 +133,9 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
     device = array_api_compat.device(points)
     num_points = points.shape[0]
     max_size = int(sphere_sizes.max())
-    table = counts_table(sphere_sizes, alphas, num_points)
-    table = xp.asarray(table, dtype=points.dtype, device=device)
+    if table is None:
+        table = counts_table(sphere_sizes, alphas, num_points)
+        table = xp.asarray(table, dtype=points.dtype, device=device)
 
     total_energy = 0.0
     for first_i in range(0, num_points, block_size):
@@ -166,7 +171,7 @@ def potential_energy(points, sphere_sizes, alphas, block_size=1024):
     return total_energy
 
 
-def net_force(points, sphere_sizes, alphas, block_size=1024):
+def net_force(points, sphere_sizes, alphas, table=None, block_size=1024):
     """Calculates the net force on each point.
 
     The force on point i is the sum over all other points of the pair weight
@@ -195,6 +200,9 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
             optimization.
         alphas: NumPy array of weightings of the forces/energies of each
             sphere size. Array has the same length as sphere_sizes.
+        table: Array calculated by counts_table from sphere_sizes, alphas and
+            num_points, with the array namespace, device and data type of
+            points. Calculated in this function if None.
         block_size: Integer specifying the number of points in each block.
 
     Returns:
@@ -204,8 +212,9 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
     device = array_api_compat.device(points)
     num_points = points.shape[0]
     max_size = int(sphere_sizes.max())
-    table = counts_table(sphere_sizes, alphas, num_points)
-    table = xp.asarray(table, dtype=points.dtype, device=device)
+    if table is None:
+        table = counts_table(sphere_sizes, alphas, num_points)
+        table = xp.asarray(table, dtype=points.dtype, device=device)
 
     net_forces = []
     for first_i in range(0, num_points, block_size):
