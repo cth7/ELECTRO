@@ -229,8 +229,8 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
 
         weights = pair_weights(i, j, num_points, table)
         # A point exerts no force on itself
-        is_pair = i != j
-        weights = xp.where(is_pair, weights, 0)
+        is_self = i == j
+        weights = xp.where(is_self, 0, weights)
 
         # Insert axes so that each row broadcasts against each column
         diff = (xp.expand_dims(points[first_i:last_i, :], axis=1)
@@ -238,7 +238,7 @@ def net_force(points, sphere_sizes, alphas, block_size=1024):
         distances_sq = xp.sum(diff * diff, axis=2)
         # The distance from a point to itself is 0. Its weight is 0, so any
         # non-zero distance avoids dividing by 0 without changing the result.
-        distances_sq = xp.where(is_pair, distances_sq, 1)
+        distances_sq = xp.where(is_self, 1, distances_sq)
 
         scale = weights / (distances_sq * xp.sqrt(distances_sq))
         net_forces.append(xp.sum(xp.expand_dims(scale, axis=2) * diff, axis=1))
