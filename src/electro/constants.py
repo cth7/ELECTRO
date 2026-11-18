@@ -5,9 +5,10 @@ def supergolden_ratio():
     # Polynomial coefficients
     coeffs = [1, -1, 0, -1]
     roots = np.roots(coeffs)
-    # Check that there is only one real root
-    assert sum([1 if root.imag == 0 else 0 for root in roots]) == 1
-    root = roots[0].real
+    # Take the only real root
+    real_roots = roots[roots.imag == 0]
+    assert len(real_roots) == 1
+    root = real_roots[0].real
     assert root > 0
     return root
 
@@ -35,9 +36,10 @@ def plastic_ratio():
     # Polynomial coefficients
     coeffs = [1, 0, -1, -1]
     roots = np.roots(coeffs)
-    # Check that there is only one real root
-    assert sum([1 if root.imag == 0 else 0 for root in roots]) == 1
-    root = roots[0].real
+    # Take the only real root
+    real_roots = roots[roots.imag == 0]
+    assert len(real_roots) == 1
+    root = real_roots[0].real
     assert root > 0
     return root
 
