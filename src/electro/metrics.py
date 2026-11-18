@@ -1,6 +1,7 @@
 import math
 
 import array_api_compat
+import numpy as np
 from array_api_compat import array_namespace
 
 from . import geometry
@@ -101,8 +102,38 @@ def crr(points, block_size=256):
     return out
 
 
+def expected_nearest_angle(num_points):
+    """Calculates the expected value of the nearest neighbor angular distance.
+
+    This is the normalizing factor in the NMNA metric. The expected value is
+    calculated for all values of N up to and including num_points.
+
+    For N points randomly distributed on the unit sphere, the expected value of
+    the angular distance from a point to its nearest neighbor is
+    pi * comb(2 * K, K) / 4 ** K, where K = N - 1. This product (excluding the
+    pi) can be calculated by cumulatively multiplying the factor
+    (2 * k - 1) / (2 * k) for k from 1 to K, where each partial product can be
+    used to calculate the expected value for a different value of N.
+
+    The cumulative product gives the values for all K at once, and is much
+    faster than math.comb, which is slow for large integers.
+
+    Args:
+        num_points: Integer specifying the largest number of points in this
+            cumulative calculation.
+
+    Returns:
+        out: NumPy float64 array with shape (num_points + 1,). out[N] is the
+            expected value for N points. out[0] and out[1] are NaN.
+    """
+    k = np.arange(1, num_points)
+    out = np.full(num_points + 1, np.nan)
+    out[2:] = math.pi * np.cumprod((2 * k - 1) / (2 * k))
+    return out
+
+
 def nmna(points, polar_angle=0, azimuthal_angle=0, cap_angle=math.pi,
-         block_size=256):
+         expected_value=None, block_size=256):
     """Calculates the NMNA metric for a set of points on the unit sphere.
 
     The Normalized Mean Nearest neighbor Angular distance metric. This metric
@@ -124,6 +155,10 @@ def nmna(points, polar_angle=0, azimuthal_angle=0, cap_angle=math.pi,
             spherical cap in radians.
         cap_angle: Size of the spherical cap. Angle between the center and the
             edge of the cap in radians.
+        expected_value: Float of the expected value of the nearest neighbor
+            angular distance for num_points random points, which can be
+            calculated by expected_nearest_angle. Calculated in this function
+            if None.
         block_size: Integer specifying the number of rows in each block of
             the nearest neighbor search. The numerical result does not depend
             on it.
@@ -161,8 +196,10 @@ def nmna(points, polar_angle=0, azimuthal_angle=0, cap_angle=math.pi,
 
     # Expected value of the nearest neighbor angular distance for randomly
     # distributed points on the sphere
-    K = num_points - 1
-    expected_value = math.comb(2 * K, K) / 4 ** K * math.pi
+    if expected_value is None:
+        # The formula for the expected value for num_points, with
+        # K = num_points - 1, is math.comb(2 * K, K) / 4 ** K * math.pi
+        expected_value = float(expected_nearest_angle(num_points)[-1])
 
     out = float(xp.mean(min_d)) / expected_value
     return out
