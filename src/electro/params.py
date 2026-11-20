@@ -91,15 +91,47 @@ def alphas(sphere_sizes):
     return out
 
 
-def stepsizes_paper(sphere_sizes, num_points, scale=0.08):
+def stepsizes(sphere_sizes, num_points, circular=True, scale=0.08):
     """Calculates the step size for each stage of the optimization.
 
-    Points in the middle of the sequence are contained in more spheres than
-    points at the ends, so the forces on them are larger. The step size
-    approximately averages the forces by dividing by the number of spheres
-    that contain the middle point. For a sphere size m, this number is
-    min(m, num_points - m + 1). The sum is over the sphere sizes included in
-    each stage. The scale was determined empirically.
+    The step size approximately averages the forces by dividing by the number
+    of spheres that contain a point. The sum is over the sphere sizes included
+    in each stage. The scale was determined empirically.
+
+    When the sequence is circular, every point is contained in m spheres of
+    size m. For non-circular sequences, points in the middle of the sequence
+    are contained in more spheres than points at the ends, so the normalization
+    uses the number of spheres that contain the middle point,
+    min(m, num_points - m + 1). This is the step size used in the paper.
+
+    Args:
+        sphere_sizes: Array of sphere sizes. The sphere size is the number of
+            points in a sphere.
+        num_points: Integer specifying the total number of points in the
+            optimization.
+        circular: Boolean. If True, the sequence of points is circular and
+            spheres can wrap around its ends, as described in
+            electro.physics.counts_table.
+        scale: Numerator of the step size.
+
+    Returns:
+        out: Array of step sizes. Array has the same length as the number of
+            stages in the optimization.
+    """
+    sphere_sizes = np.atleast_1d(sphere_sizes)
+    if circular:
+        num_spheres = sphere_sizes
+    else:
+        num_spheres = np.minimum(sphere_sizes, num_points - sphere_sizes + 1)
+    # Each stage includes the sphere sizes of all previous stages
+    out = scale / np.cumsum(num_spheres)
+    return out
+
+
+def stepsizes_paper(sphere_sizes, num_points, scale=0.08):
+    """Calculates the step size for each stage as in the paper.
+
+    Same as stepsizes for a non-circular sequence of points.
 
     Args:
         sphere_sizes: Array of sphere sizes. The sphere size is the number of
@@ -112,11 +144,7 @@ def stepsizes_paper(sphere_sizes, num_points, scale=0.08):
         out: Array of step sizes. Array has the same length as the number of
             stages in the optimization.
     """
-    sphere_sizes = np.atleast_1d(sphere_sizes)
-    num_spheres = np.minimum(sphere_sizes, num_points - sphere_sizes + 1)
-    # Each stage includes the sphere sizes of all previous stages
-    out = scale / np.cumsum(num_spheres)
-    return out
+    return stepsizes(sphere_sizes, num_points, circular=False, scale=scale)
 
 
 def max_displacements_paper(sphere_sizes, fraction=0.5):
