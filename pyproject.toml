@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "array-api-compat>=1.16.0",
+    "kaleido>=1.5.2",
     "marimo[recommended]>=0.24.0",
     "numpy>=2.5.2",
     "plotly>=7.0.0",
